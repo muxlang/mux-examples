@@ -1,0 +1,77 @@
+// Handling absence and failure without exceptions.
+//
+// Mux has no exceptions. A value that might be missing is an `optional<T>`, and
+// an operation that might fail is a `result<T, E>`. Both are opened with
+// `match`, so the compiler makes you handle the unhappy path - you cannot
+// accidentally use a value that was never there.
+
+// Missing is not the same as failed. Looking up a name that is not present is
+// ordinary, so it returns an optional.
+func lookup_age(map<string, int> people, string name) returns optional<int> {
+    if people.contains(name) {
+        return some(people[name])
+    }
+    return none
+}
+
+// Dividing by zero is a real error with something to say about it, so it
+// returns a result carrying a message.
+func safe_divide(int a, int b) returns result<int, string> {
+    if b == 0 {
+        return err("cannot divide " + a.to_string() + " by zero")
+    }
+    return ok(a / b)
+}
+
+// Results compose by matching and returning early.
+func average(list<int> values) returns result<int, string> {
+    if values.is_empty() {
+        return err("no values to average")
+    }
+    auto total = 0
+    for int v in values {
+        total = total + v
+    }
+    return safe_divide(total, values.size())
+}
+
+func main() returns void {
+    auto ages = {"Ada": 36, "Alan": 41}
+
+    match lookup_age(ages, "Ada") {
+        some(age) { print("Ada is " + age.to_string()) }
+        none { print("Ada is unknown") }
+    }
+
+    match lookup_age(ages, "Grace") {
+        some(age) { print("Grace is " + age.to_string()) }
+        none { print("Grace is unknown") }
+    }
+
+    print("")
+
+    match safe_divide(10, 3) {
+        ok(v) { print("10 / 3 = " + v.to_string()) }
+        err(e) { print("failed: " + e) }
+    }
+
+    match safe_divide(10, 0) {
+        ok(v) { print("10 / 0 = " + v.to_string()) }
+        err(e) { print("failed: " + e) }
+    }
+
+    print("")
+
+    match average([2, 4, 6, 8]) {
+        ok(v) { print("average = " + v.to_string()) }
+        err(e) { print("failed: " + e) }
+    }
+
+    // The error from the empty case travels back up untouched.
+    match average([]) {
+        ok(v) { print("average = " + v.to_string()) }
+        err(e) { print("failed: " + e) }
+    }
+
+    return
+}

@@ -1,0 +1,87 @@
+// Roll dice many times and check the distribution.
+//
+// `random.seed` is what makes this example testable. The generator is a plain
+// LCG, so a fixed seed produces the same sequence every run, on every machine.
+// Seed it and the output is a known quantity you can compare against; leave it
+// unseeded and it seeds itself from the clock, which is right for a real program
+// and useless for a test.
+//
+// `assert` then states the properties that must hold no matter what the rolls
+// were. An assertion that fails stops the program.
+
+import std.random
+import std.assert
+
+const int ROLLS = 6000
+const int SIDES = 6
+
+func roll_many(int count) returns map<int, int> {
+    map<int, int> tally = {:}
+    for int face in range(1, SIDES + 1) {
+        tally[face] = 0
+    }
+
+    for int i in range(0, count) {
+        // The obvious spelling is `random.next_range(1, SIDES + 1)`, but that
+        // currently returns only the lower half of its range and would never
+        // roll above a 3 (mux-runtime#50). Taking the modulus of a full-width
+        // integer works correctly today and stays correct once that is fixed.
+        auto face = random.next_int() % SIDES + 1
+        tally[face] = tally[face] + 1
+    }
+
+    return tally
+}
+
+func bar(int count) returns string {
+    auto width = count / 50
+    auto out = ""
+    for int i in range(0, width) {
+        out = out + "#"
+    }
+    return out
+}
+
+func main() returns void {
+    random.seed(20260812)
+
+    auto tally = roll_many(ROLLS)
+
+    print("DISTRIBUTION OF " + ROLLS.to_string() + " ROLLS")
+    print("-----------------------------")
+
+    auto total = 0
+    for int face in range(1, SIDES + 1) {
+        auto count = tally[face]
+        total = total + count
+        print(face.to_string() + ": " + count.to_string() + "  " + bar(count))
+    }
+
+    // Every roll landed on exactly one face.
+    assert.assert_eq(total, ROLLS)
+
+    // With a fair die, each face should be near ROLLS / SIDES. Allow a generous
+    // band - this checks the generator is not obviously broken, not that the
+    // sample is perfect.
+    auto expected = ROLLS / SIDES
+    auto slack = expected / 2
+    for int face in range(1, SIDES + 1) {
+        assert.assert_true(tally[face] > expected - slack)
+        assert.assert_true(tally[face] < expected + slack)
+    }
+
+    print("")
+    print("total rolls: " + total.to_string())
+    print("expected per face: " + expected.to_string())
+    print("all assertions passed")
+
+    // Re-seeding with the same value replays the identical sequence.
+    random.seed(20260812)
+    auto first = random.next_int() % SIDES + 1
+    random.seed(20260812)
+    auto again = random.next_int() % SIDES + 1
+    assert.assert_eq(first, again)
+    print("reseeding reproduced roll: " + first.to_string())
+
+    return
+}

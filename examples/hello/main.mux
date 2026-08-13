@@ -1,0 +1,8 @@
+// The smallest complete Mux program.
+//
+// Every program starts at `main`, which returns `void` and ends with `return`.
+
+func main() returns void {
+    print("Hello, World!")
+    return
+}

@@ -1,0 +1,3 @@
+circle has area 3.14159
+rectangle has area 10.0
+after resize: rectangle has area 20.0

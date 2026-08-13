@@ -1,0 +1,7 @@
+stations: 6
+
+central -> depot: [central, museum, airport, depot] (3 hops)
+market -> museum: [market, central, museum] (2 hops)
+harbor -> harbor: [harbor] (0 hops)
+
+central -> sidings: no route

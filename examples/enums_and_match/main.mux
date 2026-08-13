@@ -1,0 +1,46 @@
+// Enums that carry data, and matching on them.
+//
+// A Mux enum is a tagged union: each variant can hold its own fields. `match`
+// is how you get the data back out, and the compiler checks that you covered
+// every variant - add a new one and every match that forgot it fails to build.
+
+enum Event {
+    Click(int x, int y),
+    KeyPress(char key),
+    Scroll(float amount),
+    Quit
+}
+
+func describe(Event e) returns string {
+    match e {
+        Click(x, y) { return "click at " + x.to_string() + "," + y.to_string() }
+        KeyPress(k) { return "key " + k.to_string() }
+        Scroll(amount) { return "scroll " + amount.to_string() }
+        Quit { return "quit" }
+    }
+}
+
+func main() returns void {
+    auto events = [
+        Event.Click(10, 20),
+        Event.KeyPress('q'),
+        Event.Scroll(1.5),
+        Event.Quit
+    ]
+
+    for Event e in events {
+        print(describe(e))
+    }
+
+    // Enums compare by value, so two separately built variants are equal when
+    // their payloads are.
+    print("")
+    print("same click: " + (Event.Click(1, 1) == Event.Click(1, 1)).to_string())
+    print("diff click: " + (Event.Click(1, 1) == Event.Click(2, 2)).to_string())
+
+    // That also means they work as keys and set members.
+    auto seen = {Event.Quit, Event.Click(0, 0), Event.Quit}
+    print("unique events: " + seen.size().to_string())
+
+    return
+}

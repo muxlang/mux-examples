@@ -1,0 +1,79 @@
+// Aggregate a list of records into a report.
+//
+// The shape here is one most programs need eventually: model the data with a
+// class, then group it with maps keyed by category.
+//
+// Note how `order` is maintained alongside the maps. Grouping needs a map for
+// the lookup, but a map is not the right thing to iterate for display, so the
+// program records the order categories were first seen and reports in that
+// order. Deciding your own output order is what keeps a report stable.
+
+class Item {
+    string name
+    string category
+    int quantity
+    float unit_price
+
+    common func of(string name, string category, int quantity, float unit_price) returns Item {
+        auto item = Item.new()
+        item.name = name
+        item.category = category
+        item.quantity = quantity
+        item.unit_price = unit_price
+        return item
+    }
+
+    func total_value() returns float {
+        return self.unit_price * self.quantity.to_float()
+    }
+}
+
+func main() returns void {
+    auto inventory = [
+        Item.of("keyboard", "peripherals", 12, 45.0),
+        Item.of("monitor", "displays", 5, 220.0),
+        Item.of("mouse", "peripherals", 30, 15.5),
+        Item.of("laptop", "computers", 3, 1200.0),
+        Item.of("webcam", "peripherals", 8, 60.0),
+        Item.of("tablet", "computers", 6, 480.0)
+    ]
+
+    map<string, int> units_by_category = {:}
+    map<string, float> value_by_category = {:}
+    list<string> order = []
+
+    for Item item in inventory {
+        auto key = item.category
+        if units_by_category.contains(key) {
+            units_by_category[key] = units_by_category[key] + item.quantity
+            value_by_category[key] = value_by_category[key] + item.total_value()
+        } else {
+            units_by_category[key] = item.quantity
+            value_by_category[key] = item.total_value()
+            order = order + [key]
+        }
+    }
+
+    print("INVENTORY BY CATEGORY")
+    print("---------------------")
+    for string category in order {
+        auto units = units_by_category[category].to_string()
+        auto value = value_by_category[category].to_string()
+        print(category + ": " + units + " units, value " + value)
+    }
+
+    auto total_units = 0
+    auto total_value = 0.0
+    for Item item in inventory {
+        total_units = total_units + item.quantity
+        total_value = total_value + item.total_value()
+    }
+
+    print("")
+    print("categories:     " + order.size().to_string())
+    print("distinct items: " + inventory.size().to_string())
+    print("total units:    " + total_units.to_string())
+    print("total value:    " + total_value.to_string())
+
+    return
+}

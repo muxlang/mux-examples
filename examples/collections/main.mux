@@ -1,0 +1,44 @@
+// Lists, maps, and sets, each doing one useful job.
+//
+// Mux has three built-in collections. They share a vocabulary (`size`,
+// `is_empty`, `contains`) so once you know one, the others read the same way.
+
+func main() returns void {
+    // A list keeps order and allows duplicates.
+    auto temperatures = [18, 22, 25, 22, 19]
+    print("readings:  " + temperatures.to_string())
+    print("count:     " + temperatures.size().to_string())
+    print("first:     " + temperatures[0].to_string())
+    print("last:      " + temperatures[-1].to_string())
+
+    // Indexing past the end is a runtime error, so prefer `get` when the
+    // index comes from somewhere you do not control. It returns an optional.
+    match temperatures.get(99) {
+        some(v) { print("index 99:  " + v.to_string()) }
+        none { print("index 99:  missing") }
+    }
+
+    // A map associates keys with values.
+    auto capitals = {"France": "Paris", "Japan": "Tokyo"}
+    capitals.put("Peru", "Lima")
+    print("")
+    print("countries: " + capitals.size().to_string())
+    print("Japan:     " + capitals["Japan"])
+    print("has Chad:  " + capitals.contains("Chad").to_string())
+
+    // A set holds each value at most once.
+    auto visited = {"Paris", "Tokyo"}
+    visited.add("Paris")
+    visited.add("Lima")
+    print("")
+    print("visited:   " + visited.size().to_string() + " unique cities")
+    print("been to Lima: " + visited.contains("Lima").to_string())
+
+    // Collections nest, and `+` combines two of the same kind.
+    auto grid = [[1, 2], [3, 4]]
+    print("")
+    print("grid[1][0]: " + grid[1][0].to_string())
+    print("joined:     " + ([1, 2] + [3, 4]).to_string())
+
+    return
+}

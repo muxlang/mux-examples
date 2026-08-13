@@ -1,0 +1,64 @@
+// Sort events by time and format them for reading.
+//
+// Timestamps here are fixed Unix epoch seconds rather than `datetime.now()`, so
+// the program prints the same thing on every run. That is worth copying: a
+// program whose output depends on the clock cannot be tested by comparing it to
+// a known result.
+//
+// `datetime.format` uses strftime patterns and renders in UTC.
+
+import std.datetime
+import std.dsa.*
+
+// 2026-03-14, a few hours apart. Kept as constants so the output is fixed.
+const int LAUNCH = 1773489600
+const int DEPLOY = 1773500400
+const int ROLLBACK = 1773507600
+const int RECOVERY = 1773522000
+
+func label_for(int ts) returns string {
+    if ts == LAUNCH { return "service launched" }
+    if ts == DEPLOY { return "deploy started" }
+    if ts == ROLLBACK { return "rollback triggered" }
+    return "recovery complete"
+}
+
+func render(int ts) returns string {
+    match datetime.format(ts, "%Y-%m-%d %H:%M UTC") {
+        ok(text) { return text }
+        err(e) { return "unformattable (" + e + ")" }
+    }
+}
+
+func main() returns void {
+    // Deliberately out of order.
+    auto stamps = [ROLLBACK, LAUNCH, RECOVERY, DEPLOY]
+
+    auto ordered = algorithm.sort(stamps)
+
+    print("TIMELINE")
+    print("--------")
+    for int ts in ordered {
+        print(render(ts) + "  " + label_for(ts))
+    }
+
+    // Calendar fields come back as results, since not every integer is a valid
+    // timestamp on every platform.
+    print("")
+    match datetime.hour(ROLLBACK) {
+        ok(h) { print("rollback hour (UTC): " + h.to_string()) }
+        err(e) { print("hour failed: " + e) }
+    }
+
+    match datetime.weekday(LAUNCH) {
+        ok(d) { print("launch weekday (0=Sunday): " + d.to_string()) }
+        err(e) { print("weekday failed: " + e) }
+    }
+
+    // Elapsed time is ordinary integer arithmetic on the timestamps.
+    auto outage = RECOVERY - ROLLBACK
+    print("")
+    print("outage lasted " + (outage / 60).to_string() + " minutes")
+
+    return
+}

@@ -1,0 +1,14 @@
+stack size: 3
+popped: 3
+stack size: 2
+popped: world
+
+pairs: [1, 2]
+pairs: [a, b]
+
+counter: 1
+counter: 2
+counter: 3
+fresh counter: 1
+
+scaled: [10, 20, 30]

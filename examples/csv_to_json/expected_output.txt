@@ -1,0 +1,9 @@
+wrote employees.csv
+columns: [name, role, years]
+rows:    3
+
+{"name":"Ada","role":"engineer","years":"7"}
+{"name":"Grace","role":"admiral","years":"12"}
+{"name":"Alan","role":"analyst","years":"4"}
+
+cleaned up employees.csv

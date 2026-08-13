@@ -1,0 +1,113 @@
+// Find the shortest route between two stations with breadth-first search.
+//
+// `Graph` and `Queue` come from the standard library, but the search itself is
+// written out rather than using the built-in `graph.bfs`, because the useful
+// answer is not "which stations did I visit" - it is "how do I get there". The
+// difference is the `came_from` map, which remembers the step that first reached
+// each station so the path can be walked back at the end.
+//
+// BFS finds the fewest-hops route because it explores every station one hop away
+// before any station two hops away.
+
+// The `Collection` import is not optional: `Graph` implements it, and importing
+// the type without it is an internal compiler error today (mux-compiler#391).
+import std.dsa.*
+import std.dsa.collection.Collection
+import std.dsa.graph.Graph
+import std.dsa.queue.Queue
+
+func build_network() returns Graph<string> {
+    auto net = Graph<string>.new()
+
+    auto stations = ["central", "market", "harbor", "museum", "airport", "depot"]
+    for string s in stations {
+        net.add_vertex(s)
+    }
+
+    // Edges are directed, so add both ways to model a two-way line.
+    auto lines = [
+        ["central", "market"],
+        ["central", "museum"],
+        ["market", "harbor"],
+        ["museum", "airport"],
+        ["harbor", "airport"],
+        ["airport", "depot"]
+    ]
+    for list<string> line in lines {
+        net.add_edge(line[0], line[1])
+        net.add_edge(line[1], line[0])
+    }
+
+    return net
+}
+
+// Returns the stations to pass through, start first, or an empty list if there
+// is no route.
+func shortest_route(Graph<string> net, string start, string goal) returns list<string> {
+    map<string, string> came_from = {:}
+    auto seen = {start}
+    auto frontier = Queue<string>.new()
+    frontier.enqueue(start)
+
+    auto found = false
+    while !found && !frontier.is_empty() {
+        auto current = ""
+        match frontier.dequeue() {
+            some(station) { current = station }
+            none { return [] }
+        }
+
+        if current == goal {
+            found = true
+        } else {
+            for string next in net.neighbors(current) {
+                if !seen.contains(next) {
+                    seen.add(next)
+                    came_from[next] = current
+                    frontier.enqueue(next)
+                }
+            }
+        }
+    }
+
+    if !found {
+        return []
+    }
+
+    // Walk backwards from the goal, then reverse.
+    list<string> backwards = [goal]
+    auto cursor = goal
+    while cursor != start {
+        cursor = came_from[cursor]
+        backwards = backwards + [cursor]
+    }
+    return algorithm.reverse(backwards)
+}
+
+func report(Graph<string> net, string start, string goal) returns void {
+    auto route = shortest_route(net, start, goal)
+    if route.is_empty() {
+        print(start + " -> " + goal + ": no route")
+        return
+    }
+    auto hops = (route.size() - 1).to_string()
+    print(start + " -> " + goal + ": " + route.to_string() + " (" + hops + " hops)")
+    return
+}
+
+func main() returns void {
+    auto net = build_network()
+    print("stations: " + net.len().to_string())
+    print("")
+
+    report(net, "central", "depot")
+    report(net, "market", "museum")
+    report(net, "harbor", "harbor")
+
+    // An isolated station is reachable from nowhere.
+    net.add_vertex("sidings")
+    print("")
+    report(net, "central", "sidings")
+
+    return
+}
