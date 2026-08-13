@@ -39,6 +39,7 @@ Each of these uses the standard library to complete a real task end to end.
 | [event_timeline](examples/event_timeline) | order and format timestamped events | `datetime`, `dsa` |
 | [route_finder](examples/route_finder) | shortest path with breadth-first search | `dsa` (graph, queue) |
 | [dice_simulation](examples/dice_simulation) | seeded sampling with assertions | `random`, `assert` |
+| [http_server](examples/http_server) | a server and client over loopback, on two threads | `net`, `sync`, `data.json` |
 
 ## How these are verified
 

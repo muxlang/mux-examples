@@ -1,0 +1,168 @@
+// An HTTP server and a client talking to each other over loopback.
+//
+// The server binds an ephemeral port on 127.0.0.1, a client runs on a second
+// thread, and both shut down cleanly. Nothing leaves the machine and the port
+// number never reaches the output, so the result is the same on every run.
+//
+// Two things about this code are worth more attention than the sockets.
+//
+// FIRST, the shape. Every fallible call returns a `result` and Mux has no
+// exceptions and no propagation operator, so a nested `match` per call would
+// bury the logic under indentation. The style used here instead is: declare the
+// variable, `match` immediately, bind on `ok`, and RETURN on `err`. It costs
+// four lines per call but the function stays flat and reads top to bottom.
+// Prefer it over nesting once you have more than two fallible calls in a row.
+//
+// SECOND, the quotes. `Json` has one method, `stringify`, so a string field
+// comes back JSON-encoded: the path is `"/echo"` with the quotes, not `/echo`.
+// That is why `response_for` compares against `"\"/echo\""`. There is currently
+// no way to strip them (muxlang/mux-compiler#392, #389).
+
+import std.data.json
+import std.net
+import std.sync
+
+// One field of a JSON object, as its serialized text. Quotes included, for
+// anything that was a string.
+func field(map<string, Json> obj, string key) returns string {
+    if !obj.contains(key) {
+        return "<missing>"
+    }
+    match obj[key].stringify(none) {
+        ok(text) { return text }
+        err(e) { return "<unstringifiable: " + e + ">" }
+    }
+}
+
+// Route on the already-quoted path, because that is the form it arrives in.
+func response_for(string quoted_path) returns string {
+    if quoted_path == "\"/health\"" {
+        return "{\"status\":200,\"body\":{\"ok\":true}}"
+    }
+    if quoted_path == "\"/echo\"" {
+        return "{\"status\":201,\"body\":{\"echoed\":true}}"
+    }
+    return "{\"status\":404,\"body\":{\"error\":\"no such route\"}}"
+}
+
+// Accept one connection, read the request, route on its path, and reply.
+// Send one GET and report the status the server replied with.
+//
+// Returns the status as text rather than printing it, so the caller decides
+// when it is shown. Two threads printing race, and an example whose line order
+// can vary cannot be checked against a recorded output.
+func fetch_status(string address) returns string {
+    auto body = "{\"method\":\"GET\",\"url\":\"http://" + address + "/echo\"}"
+    match json.parse(body) {
+        ok(request) {
+            match net.http.request(request) {
+                ok(response) {
+                    match json.to_map(response) {
+                        // 201.0, not 201: every JSON number is a float
+                        // (mux-runtime#52).
+                        ok(response_map) { return field(response_map, "status") }
+                        err(e) { return "bad response: " + e }
+                    }
+                }
+                err(e) { return "request failed: " + e }
+            }
+        }
+        err(e) { return "bad request json: " + e }
+    }
+}
+
+// Accept one connection, read the request, route on its path, and reply.
+//
+// The outer `match` cannot be flattened: `accept` yields a TcpStream, a class
+// type, and a variable cannot be declared without initializing it, so there is
+// nothing to bind before the match (mux-compiler#393). Everything after it is
+// flattened by hand.
+func serve_once(TcpListener listener) returns result<string, string> {
+    match listener.accept() {
+        ok(stream) {
+            map<string, Json> request_map = {:}
+            match net.http.read_request(stream) {
+                ok(request) {
+                    match json.to_map(request) {
+                        ok(m) { request_map = m }
+                        err(e) { stream.close() return err("not an object: " + e) }
+                    }
+                }
+                err(e) { stream.close() return err("read failed: " + e) }
+            }
+
+            auto method = field(request_map, "method")
+            auto path = field(request_map, "path")
+
+            auto reply = json.parse(response_for(path))
+            match reply {
+                ok(response) {
+                    match net.http.write_response(stream, response) {
+                        ok(_) { stream.close() return ok(method + " " + path) }
+                        err(e) { stream.close() return err("write failed: " + e) }
+                    }
+                }
+                err(e) { stream.close() return err("bad response json: " + e) }
+            }
+        }
+        err(e) { return err("accept failed: " + e) }
+    }
+}
+
+func main() returns void {
+    auto listener_result = net.TcpListener.bind("127.0.0.1:0")
+
+    match listener_result {
+        ok(listener) {
+            auto address = ""
+            match listener.local_addr() {
+                ok(addr) { address = addr }
+                err(e) {
+                    print("bind address unavailable: " + e)
+                    return
+                }
+            }
+
+            // The client records its result rather than printing it. Two
+            // threads printing race, and an example whose line order can vary
+            // cannot be checked against a recorded output. `client_status` is
+            // captured by the closure, so both sides name the same storage, and
+            // `join` below is what makes the write visible here.
+            auto client_status = "(never ran)"
+
+            // The client runs on its own thread, because accept() blocks until
+            // someone connects and the connection has to come from somewhere.
+            //
+            // The body is one assignment on purpose. Writing a captured
+            // variable from inside a `match` arm in a closure is an internal
+            // compiler error today (mux-compiler#394), so the matching lives in
+            // `fetch_status` and the closure only stores what it returns. That
+            // is the better split anyway - the thread body says what it does,
+            // not how.
+            auto client = sync.spawn(func() returns void {
+                client_status = fetch_status(address)
+                return
+            })
+
+            match serve_once(listener) {
+                ok(summary) { print("server handled " + summary) }
+                err(e) { print("server error: " + e) }
+            }
+
+            match client {
+                ok(thread) {
+                    match thread.join() {
+                        ok(_) { print("client saw status " + client_status) }
+                        err(e) { print("join failed: " + e) }
+                    }
+                }
+                err(e) { print("spawn failed: " + e) }
+            }
+
+            listener.close()
+        }
+        err(e) { print("could not bind: " + e) }
+    }
+
+    return
+}
