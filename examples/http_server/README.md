@@ -29,12 +29,8 @@ general rule for concurrent code you intend to test.
   `stringify`, so a string field arrives JSON-encoded and there is no way to
   strip the quotes (muxlang/mux-compiler#392, #389). It is also why the router
   compares against `"\"/echo\""`.
-- The status prints as `201.0`, not `201`. Every JSON number is parsed as a
-  float (muxlang/mux-runtime#52).
-- The client thread body is a single assignment because writing a captured
-  variable from inside a `match` arm in a closure is an internal compiler error
-  (muxlang/mux-compiler#394). Extracting the work into `fetch_status` is the
-  better structure anyway.
+- The client thread body is a single assignment, with the matching extracted
+  into `fetch_status`, so the thread says what it does rather than how.
 
 ```bash
 mux run main.mux

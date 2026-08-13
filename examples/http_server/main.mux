@@ -45,7 +45,6 @@ func response_for(string quoted_path) returns string {
     return "{\"status\":404,\"body\":{\"error\":\"no such route\"}}"
 }
 
-// Accept one connection, read the request, route on its path, and reply.
 // Send one GET and report the status the server replied with.
 //
 // Returns the status as text rather than printing it, so the caller decides
@@ -58,8 +57,6 @@ func fetch_status(string address) returns string {
             match net.http.request(request) {
                 ok(response) {
                     match json.to_map(response) {
-                        // 201.0, not 201: every JSON number is a float
-                        // (mux-runtime#52).
                         ok(response_map) { return field(response_map, "status") }
                         err(e) { return "bad response: " + e }
                     }
@@ -133,12 +130,9 @@ func main() returns void {
             // The client runs on its own thread, because accept() blocks until
             // someone connects and the connection has to come from somewhere.
             //
-            // The body is one assignment on purpose. Writing a captured
-            // variable from inside a `match` arm in a closure is an internal
-            // compiler error today (mux-compiler#394), so the matching lives in
-            // `fetch_status` and the closure only stores what it returns. That
-            // is the better split anyway - the thread body says what it does,
-            // not how.
+            // The body is one assignment on purpose: the matching lives in
+            // `fetch_status` and the closure only stores what it returns, so the
+            // thread body says what it does rather than how.
             auto client = sync.spawn(func() returns void {
                 client_status = fetch_status(address)
                 return

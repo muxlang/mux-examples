@@ -14,11 +14,6 @@ the example demonstrates the replay directly.
 roll landed on exactly one face, and no face strayed far from its expected
 share. A failing assertion stops the program.
 
-> The rolls use `random.next_int() % SIDES + 1` rather than the more obvious
-> `random.next_range(1, SIDES + 1)`, because `next_range` currently returns only
-> the lower half of its range and would never roll above a 3
-> (muxlang/mux-runtime#50).
-
 ```bash
 mux run main.mux
 ```
