@@ -1,0 +1,15 @@
+readings:  [18, 22, 25, 22, 19]
+count:     5
+first:     18
+last:      19
+index 99:  missing
+
+countries: 3
+Japan:     Tokyo
+has Chad:  false
+
+visited:   3 unique cities
+been to Lima: true
+
+grid[1][0]: 3
+joined:     [1, 2, 3, 4]

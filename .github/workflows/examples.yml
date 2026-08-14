@@ -1,0 +1,93 @@
+name: Examples
+
+# Compiles and runs every example against mux-compiler `main`, and compares the
+# output to the recorded expected_output.txt.
+#
+# Why `main` and not the latest release: an example is authored here before the
+# compiler change it depends on has shipped, so pinning to a release would mean
+# a fix for a compiler-caused failure could never merge - the fix and the
+# release would each be waiting on the other. Building `main` removes that
+# deadlock. The guarantee that examples work with an actual RELEASE comes from
+# the release jobs in mux-compiler and mux-runtime, which run this same script
+# against the binary they just built.
+#
+# scripts/run-examples.sh is the shared contract. Every caller does the same
+# thing: get a `mux` binary, then run that script. Keep the script free of
+# anything but a compiler.
+#
+# Deliberately NOT path-filtered. This is a required check, and a required check
+# that is skipped by a paths filter never reports, so the PR waits on it
+# forever. The repo is small enough that running everything is the right trade.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Supersede an in-flight run for the same PR. Push runs get a unique group so
+  # a rapid series of merges cannot evict an intermediate commit's queued run.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  examples:
+    name: Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    env:
+      # Mirrors mux-compiler's build.yml toolchain env so the compiler is built
+      # here exactly the way its own CI builds it.
+      LLVM_SYS_221_PREFIX: /usr/lib/llvm-22
+      LLVM_CONFIG_PATH: /usr/bin/llvm-config-22
+      LLVM_SYS_221_STRICT_VERSIONING: "1"
+      CC: clang-22
+      CXX: clang++-22
+    steps:
+      - name: Check out mux-examples
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check out mux-compiler
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: muxlang/mux-compiler
+          ref: main
+          path: mux-compiler
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9 # untagged master commit; the repo's only tag (v1) is OLDER than this
+        with:
+          toolchain: 1.93.1
+
+      - name: Cache Cargo registry and build artifacts
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: mux-compiler
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install LLVM 22
+        # mux-compiler's own script, run from its checkout, rather than a copy
+        # here. The apt source line is derived from the runner's Ubuntu release,
+        # so a second copy is a second thing to get wrong.
+        working-directory: mux-compiler
+        run: ./scripts/ci/install-llvm.sh
+
+      - name: Build the compiler and the runtime
+        # Both packages, in one command. Building only the compiler leaves no
+        # libmux_runtime.a - cargo emits a dependency's rlib and never its
+        # staticlib - and every compiled program then fails to link. This is
+        # the mistake that broke the nightly canary once already.
+        working-directory: mux-compiler
+        run: cargo build -p mux-runtime -p mux-lang --release --locked
+
+      - name: Run the examples
+        env:
+          MUX_BIN: ${{ github.workspace }}/mux-compiler/target/release/mux
+          # Points at the archive just built. The shared library sits beside it
+          # in the same directory, which programs linking libm (anything using
+          # math) need in order to link at all.
+          MUX_RUNTIME_LIB: ${{ github.workspace }}/mux-compiler/target/release/libmux_runtime.a
+        run: ./scripts/run-examples.sh

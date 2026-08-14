@@ -1,0 +1,74 @@
+// Classes, and how interfaces work in Mux.
+//
+// An interface is a *bound*, not a value type. You cannot declare a
+// `list<Shape>` and fill it with mixed classes the way you might in Java or Go,
+// because Mux resolves interface calls statically - there is no vtable and no
+// runtime lookup. Instead you write a generic function bounded by the
+// interface, and the compiler generates a version per concrete type.
+//
+// The payoff is that `outline` below is an ordinary direct call at runtime,
+// with no dynamic dispatch cost.
+
+interface Shape {
+    func area() returns float
+    func name() returns string
+}
+
+class Circle is Shape {
+    float radius
+
+    // `common` makes a function belong to the class rather than an instance,
+    // which is how Mux spells a constructor. `Circle.new()` allocates.
+    common func of(float r) returns Circle {
+        auto c = Circle.new()
+        c.radius = r
+        return c
+    }
+
+    func area() returns float {
+        return 3.14159 * self.radius * self.radius
+    }
+
+    func name() returns string {
+        return "circle"
+    }
+}
+
+class Rectangle is Shape {
+    float width
+    float height
+
+    common func of(float w, float h) returns Rectangle {
+        auto r = Rectangle.new()
+        r.width = w
+        r.height = h
+        return r
+    }
+
+    func area() returns float {
+        return self.width * self.height
+    }
+
+    func name() returns string {
+        return "rectangle"
+    }
+}
+
+// One function, any Shape. `T is Shape` is the bound.
+func outline<T is Shape>(T shape) returns string {
+    return shape.name() + " has area " + shape.area().to_string()
+}
+
+func main() returns void {
+    auto small = Circle.of(1.0)
+    auto wide = Rectangle.of(4.0, 2.5)
+
+    print(outline(small))
+    print(outline(wide))
+
+    // Fields are ordinary mutable state.
+    wide.height = 5.0
+    print("after resize: " + outline(wide))
+
+    return
+}

@@ -1,0 +1,10 @@
+INVENTORY BY CATEGORY
+---------------------
+peripherals: 50 units, value 1485.0
+displays: 5 units, value 1100.0
+computers: 9 units, value 6480.0
+
+categories:     3
+distinct items: 6
+total units:    64
+total value:    9065.0

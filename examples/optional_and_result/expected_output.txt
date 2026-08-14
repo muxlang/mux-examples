@@ -1,0 +1,8 @@
+Ada is 36
+Grace is unknown
+
+10 / 3 = 3
+failed: cannot divide 10 by zero
+
+average = 5
+failed: no values to average

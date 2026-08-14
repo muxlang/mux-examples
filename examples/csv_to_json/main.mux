@@ -1,0 +1,82 @@
+// Read a CSV file and emit each row as a JSON object.
+//
+// This is the classic glue task: text in one shape, text out in another, with
+// every step able to fail. Note how the failures stack - reading, parsing, and
+// serializing each return a result, and each is opened with `match` before the
+// value inside is used.
+//
+// The program writes its own input file so it is self-contained, then removes
+// it on the way out.
+
+import std.io
+import std.data.csv
+import std.data.json
+
+const string DATA_FILE = "employees.csv"
+
+func write_sample() returns result<void, string> {
+    string contents = "name,role,years\nAda,engineer,7\nGrace,admiral,12\nAlan,analyst,4"
+    return io.write_file(DATA_FILE, contents)
+}
+
+func main() returns void {
+    match write_sample() {
+        ok(_) { print("wrote " + DATA_FILE) }
+        err(e) {
+            print("could not write sample: " + e)
+            return
+        }
+    }
+
+    string raw = ""
+    match io.read_file(DATA_FILE) {
+        ok(contents) { raw = contents }
+        err(e) {
+            print("could not read sample: " + e)
+            return
+        }
+    }
+
+    match csv.parse_with_headers(raw) {
+        ok(table) {
+            print("columns: " + table.headers.to_string())
+            print("rows:    " + table.rows.size().to_string())
+            print("")
+
+            // Rebuild each row as a name -> value map, then hand it to JSON.
+            //
+            // A row is not guaranteed to have as many fields as there are
+            // headers - a short line in the file produces a short row - so the
+            // field is read with `get`, which returns an optional, rather than
+            // indexed directly. Indexing would panic on the first ragged row,
+            // which is the kind of input a real CSV eventually contains.
+            for list<string> row in table.rows {
+                map<string, string> record = {:}
+                for int i in range(0, table.headers.size()) {
+                    match row.get(i) {
+                        some(value) { record[table.headers[i]] = value }
+                        none { record[table.headers[i]] = "" }
+                    }
+                }
+
+                match json.from_map(record) {
+                    ok(obj) {
+                        match obj.stringify(none) {
+                            ok(text) { print(text) }
+                            err(e) { print("stringify failed: " + e) }
+                        }
+                    }
+                    err(e) { print("could not build object: " + e) }
+                }
+            }
+        }
+        err(e) { print("could not parse csv: " + e) }
+    }
+
+    match io.remove(DATA_FILE) {
+        ok(_) { print("") print("cleaned up " + DATA_FILE) }
+        err(e) { print("cleanup failed: " + e) }
+    }
+
+    return
+}

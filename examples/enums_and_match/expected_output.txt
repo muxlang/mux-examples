@@ -1,0 +1,8 @@
+click at 10,20
+key q
+scroll 1.5
+quit
+
+same click: true
+diff click: false
+unique events: 2

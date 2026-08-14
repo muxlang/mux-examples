@@ -1,0 +1,8 @@
+# Compiling an example leaves an executable beside its source, named after the
+# file. `scripts/run-examples.sh` removes it, but a crashed or interrupted run
+# can leave one behind.
+examples/*/main
+
+# csv_to_json writes its own input file and removes it on the way out; a run
+# that dies partway through can leave it on disk.
+examples/csv_to_json/employees.csv

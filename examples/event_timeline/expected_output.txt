@@ -1,0 +1,11 @@
+TIMELINE
+--------
+2026-03-14 12:00 UTC  service launched
+2026-03-14 15:00 UTC  deploy started
+2026-03-14 17:00 UTC  rollback triggered
+2026-03-14 21:00 UTC  recovery complete
+
+rollback hour (UTC): 17
+launch weekday (0=Sunday): 6
+
+outage lasted 240 minutes

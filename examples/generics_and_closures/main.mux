@@ -1,0 +1,106 @@
+// Generic types, and functions that are values.
+//
+// Generics in Mux are monomorphized: the compiler stamps out a copy per
+// concrete type, so `Stack<int>` costs no more than a hand-written int stack.
+// Closures are ordinary values you can store, pass, and return.
+
+// A generic container. `T` is filled in at each use site.
+class Stack<T> {
+    list<T> items
+
+    common func empty() returns Stack<T> {
+        auto s = Stack<T>.new()
+        s.items = []
+        return s
+    }
+
+    func push(T value) returns void {
+        self.items = self.items + [value]
+        return
+    }
+
+    func pop() returns optional<T> {
+        if self.items.is_empty() {
+            return none
+        }
+        auto last = self.items[-1]
+        list<T> rest = []
+        for int i in range(0, self.items.size() - 1) {
+            rest = rest + [self.items[i]]
+        }
+        self.items = rest
+        return some(last)
+    }
+
+    func size() returns int {
+        return self.items.size()
+    }
+}
+
+// A generic function. It works for any T because it only moves values around.
+func pair_up<T>(T a, T b) returns list<T> {
+    return [a, b]
+}
+
+// A function that returns a function. `counter` is captured by the closure and
+// stays alive between calls, shared with anything else that captured it.
+func make_counter() returns func() returns int {
+    auto count = 0
+    return func() returns int {
+        count++
+        return count
+    }
+}
+
+// Closures passed as arguments let you parameterize behavior, not just data.
+func apply_all(list<int> values, func(int) returns int transform) returns list<int> {
+    list<int> out = []
+    for int v in values {
+        out = out + [transform(v)]
+    }
+    return out
+}
+
+func main() returns void {
+    auto numbers = Stack<int>.empty()
+    numbers.push(1)
+    numbers.push(2)
+    numbers.push(3)
+    print("stack size: " + numbers.size().to_string())
+
+    match numbers.pop() {
+        some(v) { print("popped: " + v.to_string()) }
+        none { print("popped: empty") }
+    }
+    print("stack size: " + numbers.size().to_string())
+
+    // The same class, a different T.
+    auto words = Stack<string>.empty()
+    words.push("hello")
+    words.push("world")
+    match words.pop() {
+        some(v) { print("popped: " + v) }
+        none { print("popped: empty") }
+    }
+
+    print("")
+    print("pairs: " + pair_up(1, 2).to_string())
+    print("pairs: " + pair_up("a", "b").to_string())
+
+    print("")
+    auto next = make_counter()
+    print("counter: " + next().to_string())
+    print("counter: " + next().to_string())
+    print("counter: " + next().to_string())
+
+    // A second counter has its own captured state.
+    auto other = make_counter()
+    print("fresh counter: " + other().to_string())
+
+    print("")
+    auto factor = 10
+    auto scaled = apply_all([1, 2, 3], func(int n) returns int { return n * factor })
+    print("scaled: " + scaled.to_string())
+
+    return
+}
