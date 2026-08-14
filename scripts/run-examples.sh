@@ -106,7 +106,16 @@ for name in "${selected[@]}"; do
     fi
 
     if [ $update -eq 1 ]; then
-        printf '%s\n' "$actual" > "$expected_file"
+        # Check the write. An unwritable baseline - a read-only checkout, a
+        # permissions problem - would otherwise be counted as updated and the
+        # run would exit 0, which is the same way an unrunnable example used to
+        # pass silently.
+        if ! printf '%s\n' "$actual" > "$expected_file"; then
+            echo "FAIL $name (could not write $expected_file)"
+            failed=$((failed + 1))
+            failures+=("$name")
+            continue
+        fi
         echo "UPDATED $name"
         updated=$((updated + 1))
         continue
