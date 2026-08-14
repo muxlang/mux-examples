@@ -52,14 +52,14 @@ MUX_BIN=/path/to/mux ./scripts/run-examples.sh hello    # check one
 MUX_BIN=/path/to/mux ./scripts/run-examples.sh --update # re-record expected output
 ```
 
-That script is the shared contract. Three things call it:
+That script is the shared contract. Today one thing calls it:
 
 - this repo's CI, against mux-compiler `main`, on every pull request
-- mux-compiler's release job, against the compiler being released
-- mux-runtime's release job, against the runtime being released
 
-The release jobs are what guarantee the examples work with a compiler you can
-actually install.
+**Planned, not yet built:** the same script run from mux-compiler's and
+mux-runtime's release jobs, against the binary being released. That is what
+would guarantee the examples work with a compiler you can actually install -
+until it exists, the guarantee is only that they work against `main`.
 
 ## Adding an example
 

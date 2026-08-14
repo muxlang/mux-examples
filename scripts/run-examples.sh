@@ -3,9 +3,12 @@
 # Compile and run every example, and compare its output to the recorded
 # expected_output.txt.
 #
-# This script is the contract shared by every caller: mux-examples' own CI, and
-# the release jobs in mux-compiler and mux-runtime that run the examples against
-# a compiler they just built. Keep it dependent on nothing but a `mux` binary.
+# This script is the contract shared by every caller. Today that is mux-examples'
+# own CI; the intended additions are release jobs in mux-compiler and mux-runtime
+# running it against a binary they just built, which are not written yet.
+#
+# Keep it dependent on nothing but a `mux` binary, so any of those callers can
+# use it without installing anything else.
 #
 # Usage:
 #   MUX_BIN=/path/to/mux ./scripts/run-examples.sh            # check
@@ -49,6 +52,20 @@ if ! command -v "$MUX_BIN" >/dev/null 2>&1 && [ ! -x "$MUX_BIN" ]; then
     exit 2
 fi
 
+# A per-example time limit, when the platform offers one. `timeout` is GNU
+# coreutils and is absent from a default macOS install, where requiring it would
+# turn every example into a command-not-found failure. The limit only guards
+# against an example that hangs, so running without it loses a safety net rather
+# than the check itself. `gtimeout` is what Homebrew's coreutils installs.
+timeout_cmd=()
+if command -v timeout >/dev/null 2>&1; then
+    timeout_cmd=(timeout "$TIMEOUT_SECS")
+elif command -v gtimeout >/dev/null 2>&1; then
+    timeout_cmd=(gtimeout "$TIMEOUT_SECS")
+else
+    echo "note: no 'timeout' available, running without a per-example time limit" >&2
+fi
+
 if [ ${#selected[@]} -eq 0 ]; then
     while IFS= read -r dir; do
         selected+=("$(basename "$dir")")
@@ -72,7 +89,7 @@ for name in "${selected[@]}"; do
         continue
     fi
 
-    actual="$(cd "$dir" && timeout "$TIMEOUT_SECS" "$MUX_BIN" run main.mux 2>&1)"
+    actual="$(cd "$dir" && "${timeout_cmd[@]}" "$MUX_BIN" run main.mux 2>&1)"
     status=$?
 
     # Compiling leaves an executable beside the source; it is not output.
