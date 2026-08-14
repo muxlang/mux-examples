@@ -44,10 +44,19 @@ func main() returns void {
             print("")
 
             // Rebuild each row as a name -> value map, then hand it to JSON.
+            //
+            // A row is not guaranteed to have as many fields as there are
+            // headers - a short line in the file produces a short row - so the
+            // field is read with `get`, which returns an optional, rather than
+            // indexed directly. Indexing would panic on the first ragged row,
+            // which is the kind of input a real CSV eventually contains.
             for list<string> row in table.rows {
                 map<string, string> record = {:}
                 for int i in range(0, table.headers.size()) {
-                    record[table.headers[i]] = row[i]
+                    match row.get(i) {
+                        some(value) { record[table.headers[i]] = value }
+                        none { record[table.headers[i]] = "" }
+                    }
                 }
 
                 match json.from_map(record) {

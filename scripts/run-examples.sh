@@ -119,6 +119,14 @@ done
 echo ""
 if [ $update -eq 1 ]; then
     echo "updated $updated example(s)"
+    # An example that failed to run got no baseline, so exiting 0 here would
+    # report a partial re-record as a complete one - and the missing file only
+    # surfaces later as a check failure, far from the run that caused it.
+    if [ $failed -gt 0 ]; then
+        echo "NOT updated: ${failures[*]}"
+        echo "those examples failed to run, so their expected output is unchanged"
+        exit 1
+    fi
     exit 0
 fi
 
