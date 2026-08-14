@@ -3,12 +3,13 @@
 # Compile and run every example, and compare its output to the recorded
 # expected_output.txt.
 #
-# This script is the contract shared by every caller. Today that is mux-examples'
-# own CI; the intended additions are release jobs in mux-compiler and mux-runtime
-# running it against a binary they just built, which are not written yet.
+# This script is the contract shared by every caller: mux-examples' own CI
+# against mux-compiler `main`, mux-compiler's release workflow against the
+# artifact it is about to publish, and mux-runtime's CI against the runtime
+# under review.
 #
-# Keep it dependent on nothing but a `mux` binary, so any of those callers can
-# use it without installing anything else.
+# Keep it dependent on nothing but a `mux` binary, so every one of those callers
+# can use it without installing anything else.
 #
 # Usage:
 #   MUX_BIN=/path/to/mux ./scripts/run-examples.sh            # check

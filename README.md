@@ -52,14 +52,19 @@ MUX_BIN=/path/to/mux ./scripts/run-examples.sh hello    # check one
 MUX_BIN=/path/to/mux ./scripts/run-examples.sh --update # re-record expected output
 ```
 
-That script is the shared contract. Today one thing calls it:
+That script is the shared contract. Three things call it:
 
 - this repo's CI, against mux-compiler `main`, on every pull request
+- **mux-compiler's release workflow**, against the artifact it is about to
+  publish - installed exactly the way a user installs it, so an example that
+  breaks blocks the release
+- **mux-runtime's CI**, against the runtime under review. That repo has no
+  release workflow (merging to `main` is what makes a change available), so a
+  pull request is the last point at which a runtime change that breaks a
+  published example can be caught.
 
-**Planned, not yet built:** the same script run from mux-compiler's and
-mux-runtime's release jobs, against the binary being released. That is what
-would guarantee the examples work with a compiler you can actually install -
-until it exists, the guarantee is only that they work against `main`.
+The second is what makes these examples a promise about a compiler you can
+actually install, rather than only about `main`.
 
 ## Adding an example
 
