@@ -9,10 +9,7 @@
 // BFS finds the fewest-hops route because it explores every station one hop away
 // before any station two hops away.
 
-// The `Collection` import is not optional: `Graph` implements it, and importing
-// the type without it is an internal compiler error today (mux-compiler#391).
 import std.dsa.*
-import std.dsa.collection.Collection
 import std.dsa.graph.Graph
 import std.dsa.queue.Queue
 
