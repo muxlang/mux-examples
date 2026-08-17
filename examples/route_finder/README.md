@@ -14,10 +14,6 @@ before anything two hops away.
 The graph is directed, so each two-way line is added as a pair of edges. The
 last case shows an isolated vertex, reachable from nowhere.
 
-> The four imports at the top are not all decorative. `Graph` implements
-> `Collection`, and importing the type without also importing that interface is
-> currently an internal compiler error (muxlang/mux-compiler#391).
-
 ```bash
 mux run main.mux
 ```
