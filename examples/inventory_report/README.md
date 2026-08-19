@@ -10,10 +10,10 @@ map is not the right thing to iterate for display. The program keeps a separate
 list recording the order categories were first seen, and reports in that order.
 Deciding your own output order is what keeps a report stable.
 
-> The obvious alternative is to sort the category names, which is not currently
-> possible: `algorithm.sort` on a `list<string>` returns the list unchanged
-> (muxlang/mux-compiler#390). First-seen order is a good answer regardless, but
-> that bug is why it is the only answer here.
+> Sorting the category names is the obvious alternative, and `algorithm.sort`
+> on a `list<string>` does work. First-seen order is chosen deliberately: it
+> reports categories in the order the source data introduces them, which is
+> usually what someone reading that data expects, and it needs no second pass.
 
 ```bash
 mux run main.mux
