@@ -13,33 +13,50 @@
 // four lines per call but the function stays flat and reads top to bottom.
 // Prefer it over nesting once you have more than two fallible calls in a row.
 //
-// SECOND, the quotes. `Json` has one method, `stringify`, so a string field
-// comes back JSON-encoded: the path is `"/echo"` with the quotes, not `/echo`.
-// That is why `response_for` compares against `"\"/echo\""`. There is currently
-// no way to strip them (muxlang/mux-compiler#392, #389).
+// SECOND, reading a field. `stringify` gives back the JSON ENCODING of a value,
+// so a string field arrives as `"/echo"` with the quotes. The typed accessors
+// (`as_string`, `as_int`, ...) give back the value itself, and return an
+// `optional` because a field holding the wrong kind is ordinary when reading a
+// document you did not write.
 
 import std.data.json
 import std.net
 import std.sync
 
-// One field of a JSON object, as its serialized text. Quotes included, for
-// anything that was a string.
+// One string field of a JSON object, decoded.
+//
+// A missing key and a key holding a non-string are different failures, and both
+// are reported rather than papered over with an empty string.
 func field(map<string, Json> obj, string key) returns string {
     if !obj.contains(key) {
         return "<missing>"
     }
-    match obj[key].stringify(none) {
-        ok(text) { return text }
-        err(e) { return "<unstringifiable: " + e + ">" }
+    match obj[key].as_string() {
+        some(text) { return text }
+        none { return "<not a string>" }
     }
 }
 
-// Route on the already-quoted path, because that is the form it arrives in.
-func response_for(string quoted_path) returns string {
-    if quoted_path == "\"/health\"" {
+// One integer field of a JSON object, as text.
+//
+// A status is a number in the document, so `as_string` would report it as the
+// wrong kind. Which accessor to reach for is decided by what the field holds,
+// not by what you want to do with it afterwards.
+func int_field(map<string, Json> obj, string key) returns string {
+    if !obj.contains(key) {
+        return "<missing>"
+    }
+    match obj[key].as_int() {
+        some(n) { return n.to_string() }
+        none { return "<not an int>" }
+    }
+}
+
+func response_for(string path) returns string {
+    if path == "/health" {
         return "{\"status\":200,\"body\":{\"ok\":true}}"
     }
-    if quoted_path == "\"/echo\"" {
+    if path == "/echo" {
         return "{\"status\":201,\"body\":{\"echoed\":true}}"
     }
     return "{\"status\":404,\"body\":{\"error\":\"no such route\"}}"
@@ -57,7 +74,7 @@ func fetch_status(string address) returns string {
             match net.http.request(request) {
                 ok(response) {
                     match json.to_map(response) {
-                        ok(response_map) { return field(response_map, "status") }
+                        ok(response_map) { return int_field(response_map, "status") }
                         err(e) { return "bad response: " + e }
                     }
                 }

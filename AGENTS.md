@@ -60,12 +60,17 @@ source requires building the runtime in the same command
 
 - **`{:}` is the empty map; `{}` is the empty set.** An empty map literal also
   cannot be type-inferred - annotate it.
-- **An expression cannot span lines**, even inside an unclosed bracket. Split
-  long expressions into intermediate `auto` bindings.
+- **An expression may span lines inside an open bracket** (since 0.9.0). A long
+  call or literal can wrap, and a trailing comma before the closing bracket is
+  allowed. Outside brackets a newline still ends the statement.
 - **An interface cannot be a value type.** No `list<SomeInterface>`. Take it as
   a generic bound instead.
-- **Importing a `std.dsa` type also requires importing
-  `std.dsa.collection.Collection`**, or codegen hits an internal error.
+- **Importing a type brings its interfaces with it** (since 0.9.0).
+  `import std.dsa.graph.Graph` no longer needs `std.dsa.collection.Collection`
+  alongside it.
+- **A namespace import binds the namespace, not its contents.** After
+  `import std.net`, the type is `net.TcpListener`; the bare name is not in
+  scope. Import it directly or with `.*` to use the short form.
 
 Known compiler and runtime gaps that the current examples work around, and what
 to undo when they are fixed, are tracked in the workarounds note referenced from

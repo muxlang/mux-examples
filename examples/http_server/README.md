@@ -23,12 +23,14 @@ main thread prints after `join`. Two threads printing race, and an example whose
 line order varies cannot be checked against a recorded output. This is the
 general rule for concurrent code you intend to test.
 
-## Known rough edges this example works around
+## Notes
 
-- `"GET"` and `"/echo"` print **with quotes**. `Json` has one method,
-  `stringify`, so a string field arrives JSON-encoded and there is no way to
-  strip the quotes (muxlang/mux-compiler#392, #389). It is also why the router
-  compares against `"\"/echo\""`.
+- **Read fields with the typed accessors, not `stringify`.** `stringify` returns
+  the JSON *encoding* of a value, so a string field comes back as `"/echo"` with
+  the quotes; `as_string` returns `/echo`. Each accessor returns an `optional`,
+  because a field holding a different kind than you expected is ordinary when
+  reading a document you did not write - which is why `status` goes through
+  `as_int` and not `as_string`.
 - The client thread body is a single assignment, with the matching extracted
   into `fetch_status`, so the thread says what it does rather than how.
 
