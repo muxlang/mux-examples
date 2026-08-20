@@ -32,8 +32,8 @@ func field(map<string, Json> obj, string key) returns string {
         return "<missing>"
     }
     match obj[key].as_string() {
-        some(text) { return text }
-        none { return "<not a string>" }
+        ok(text) { return text }
+        err(e) { return "<not a string>" }
     }
 }
 
@@ -47,8 +47,8 @@ func int_field(map<string, Json> obj, string key) returns string {
         return "<missing>"
     }
     match obj[key].as_int() {
-        some(n) { return n.to_string() }
-        none { return "<not an int>" }
+        ok(n) { return n.to_string() }
+        err(e) { return "<not an int>" }
     }
 }
 
