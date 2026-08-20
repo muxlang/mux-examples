@@ -25,15 +25,19 @@ import std.sync
 
 // One string field of a JSON object, decoded.
 //
-// A missing key and a key holding a non-string are different failures, and both
-// are reported rather than papered over with an empty string.
+// A missing key and a key holding the wrong kind are different failures, and
+// both are reported rather than papered over with an empty string.
+//
+// The accessor's error says what the field actually held - "expected a string,
+// found an int" - so it is passed through rather than replaced with a generic
+// message that throws that away.
 func field(map<string, Json> obj, string key) returns string {
     if !obj.contains(key) {
         return "<missing>"
     }
     match obj[key].as_string() {
         ok(text) { return text }
-        err(e) { return "<not a string>" }
+        err(e) { return "<" + e + ">" }
     }
 }
 
@@ -48,7 +52,7 @@ func int_field(map<string, Json> obj, string key) returns string {
     }
     match obj[key].as_int() {
         ok(n) { return n.to_string() }
-        err(e) { return "<not an int>" }
+        err(e) { return "<" + e + ">" }
     }
 }
 
