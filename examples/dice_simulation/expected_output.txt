@@ -1,3 +1,25 @@
+warning: 2 warnings
+
+warning[W0300]: binding 'i' is never read
+--> main.mux:24:9
+   |
+24 |     for int i in range(0, count) {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+25 |         // next_range is inclusive of min and exclusive of max, so this is 1..6.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+26 |         auto face = random.next_range(1, SIDES + 1)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+27 |         tally[face] = tally[face] + 1
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[W0300]: binding 'i' is never read
+--> main.mux:36:9
+   |
+36 |     for int i in range(0, width) {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+37 |         out = out + "#"
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
 DISTRIBUTION OF 6000 ROLLS
 -----------------------------
 1: 955  ###################
