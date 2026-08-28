@@ -1,7 +1,7 @@
 name: Examples
 
-# Compiles and runs every example against mux-compiler `main`, and compares the
-# output to the recorded expected_output.txt.
+# Compiles and runs every example against mux-compiler `main` (or an explicitly
+# paired branch), and compares the output to the recorded expected_output.txt.
 #
 # Why `main` and not the latest release: an example is authored here before the
 # compiler change it depends on has shipped, so pinning to a release would mean
@@ -10,6 +10,8 @@ name: Examples
 # deadlock. The guarantee that examples work with an actual RELEASE comes from
 # the release jobs in mux-compiler and mux-runtime, which run this same script
 # against the binary they just built.
+# For coordinated compiler changes, add `paired-compiler:<branch>` to this PR;
+# the resolver below then tests the branch without changing the normal default.
 #
 # scripts/run-examples.sh is the shared contract. Every caller does the same
 # thing: get a `mux` binary, then run that script. Keep the script free of
@@ -50,11 +52,34 @@ jobs:
       - name: Check out mux-examples
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Resolve the mux-compiler ref to build against
+        id: compiler_ref
+        env:
+          # A paired compiler label is only honored after validating it below.
+          # Keeping the label in env avoids injecting untrusted text into the
+          # shell from an expression.
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          ref=main
+          paired=$(python3 -c 'import json, os; raw = json.loads(os.environ.get("PR_LABELS", "null")); labels = raw if isinstance(raw, list) else []; match = next((label for label in labels if label.startswith("paired-compiler:")), ""); print(match.removeprefix("paired-compiler:"), end="")')
+          if [ -n "$paired" ]; then
+            case "$paired" in
+              -* | *..* | *[!A-Za-z0-9._/-]*)
+                echo "::error::paired-compiler label is not a valid branch name: $paired"
+                exit 1
+                ;;
+            esac
+            ref="$paired"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Building muxlang/mux-compiler@$ref against these examples."
+
       - name: Check out mux-compiler
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: muxlang/mux-compiler
-          ref: main
+          ref: ${{ steps.compiler_ref.outputs.ref }}
           path: mux-compiler
 
       - name: Install Rust toolchain
