@@ -10,6 +10,8 @@ name: Examples
 # deadlock. The guarantee that examples work with an actual RELEASE comes from
 # the release jobs in mux-compiler and mux-runtime, which run this same script
 # against the binary they just built.
+# For coordinated compiler changes, add `paired-compiler:<branch>` to this PR;
+# the resolver below then tests the branch without changing the normal default.
 #
 # scripts/run-examples.sh is the shared contract. Every caller does the same
 # thing: get a `mux` binary, then run that script. Keep the script free of
