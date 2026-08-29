@@ -79,6 +79,14 @@ updated=0
 failures=()
 
 for name in "${selected[@]}"; do
+    case "$name" in
+        ""|.|..|*/*)
+            echo "FAIL $name (example name must be a direct directory under examples/)"
+            failed=$((failed + 1))
+            failures+=("$name")
+            continue
+            ;;
+    esac
     dir="$examples_dir/$name"
     source_file="$dir/main.mux"
     expected_file="$dir/expected_output.txt"
