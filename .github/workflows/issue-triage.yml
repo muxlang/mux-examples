@@ -58,15 +58,11 @@ jobs:
                 });
               }
             };
-            // Every issue template already sets `needs triage` in its frontmatter,
-            // so applying it here unconditionally was pure duplication. ensureLabel
-            // must stay: GitHub silently drops a template label that does not exist
-            // in the repo, so this call is what creates it.
-            //
-            // The one case that still needs an explicit apply is the run that
-            // creates the label: the template's request was already dropped, and
-            // creating the label now does not retroactively label the issue that
-            // triggered this run. Every later issue gets it from its template.
+            // Apply the label explicitly for every external issue. This remains
+            // correct when a repository-local template or a direct blank issue
+            // omits the label, and is idempotent when the template already set it.
+            // ensureLabel must stay: GitHub silently drops a template label that
+            // does not exist in the repo, so this call is what creates it.
             // An insider files with priority and status already in hand, so
             // `needs triage` would only ask a maintainer to review their own
             // issue. The template applies it before this workflow runs, so the
@@ -123,10 +119,10 @@ jobs:
 
             // ensureLabel still runs for an insider's issue: the label has to
             // exist in the repo for everyone else's template to apply it.
-            const createdTriageLabel = await ensureLabel(labelName, 'ededed', 'Not yet reviewed or categorized');
+            await ensureLabel(labelName, 'ededed', 'Not yet reviewed or categorized');
             if (isInsider) {
               await removeLabelIfPresent(labelName);
-            } else if (createdTriageLabel) {
+            } else {
               await applyLabelIfMissing(labelName);
             }
             if (!context.payload.issue.assignee) {
