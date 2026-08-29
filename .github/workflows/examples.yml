@@ -116,3 +116,10 @@ jobs:
           # math) need in order to link at all.
           MUX_RUNTIME_LIB: ${{ github.workspace }}/mux-compiler/target/release/libmux_runtime.a
         run: ./scripts/run-examples.sh
+
+      - name: Reject compiled example debris
+        run: |
+          if find examples -type f -name main -print -quit | grep -q .; then
+            echo "compiled example executable left in the checkout" >&2
+            exit 1
+          fi

@@ -23,6 +23,14 @@
 
 set -uo pipefail
 
+diff_file=''
+cleanup() {
+    if [ -n "$diff_file" ]; then
+        rm -f -- "$diff_file"
+    fi
+}
+trap cleanup EXIT INT TERM
+
 MUX_BIN="${MUX_BIN:-mux}"
 TIMEOUT_SECS="${TIMEOUT_SECS:-120}"
 
@@ -79,6 +87,14 @@ updated=0
 failures=()
 
 for name in "${selected[@]}"; do
+    case "$name" in
+        ""|.|..|*/*)
+            echo "FAIL $name (example name must be a direct directory under examples/)"
+            failed=$((failed + 1))
+            failures+=("$name")
+            continue
+            ;;
+    esac
     dir="$examples_dir/$name"
     source_file="$dir/main.mux"
     expected_file="$dir/expected_output.txt"
@@ -94,7 +110,10 @@ for name in "${selected[@]}"; do
     status=$?
 
     # Compiling leaves an executable beside the source; it is not output.
-    rm -f "$dir/main"
+    # The compiler and some examples create local outputs beside the source.
+    # Remove them even when execution times out or fails, so a killed run
+    # cannot leave generated input/output in the teaching tree.
+    rm -f -- "$dir/main" "$dir/employees.csv"
 
     if [ $status -ne 0 ]; then
         echo "FAIL $name (exit $status)"
@@ -129,18 +148,25 @@ for name in "${selected[@]}"; do
         continue
     fi
 
-    if diff -u "$expected_file" <(printf '%s\n' "$actual") > /tmp/mux-example-diff.$$ 2>&1; then
+    diff_file=$(mktemp "${TMPDIR:-/tmp}/mux-example-diff.XXXXXX") || {
+        echo "FAIL $name (could not allocate a temporary diff file)"
+        failed=$((failed + 1))
+        failures+=("$name")
+        continue
+    }
+    if diff -u "$expected_file" <(printf '%s\n' "$actual") > "$diff_file" 2>&1; then
         echo "ok   $name"
         passed=$((passed + 1))
     else
         echo "FAIL $name (output differs)"
         echo "--- diff (expected vs actual) ---"
-        cat /tmp/mux-example-diff.$$
+        cat "$diff_file"
         echo "---------------------------------"
         failed=$((failed + 1))
         failures+=("$name")
     fi
-    rm -f /tmp/mux-example-diff.$$
+    rm -f -- "$diff_file"
+    diff_file=''
 done
 
 echo ""
