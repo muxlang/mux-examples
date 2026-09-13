@@ -2,66 +2,74 @@
 
 import std.sql
 
+func close_connection_with_error(Connection connection, SqlError failure) returns result<int, SqlError> {
+    connection.close()
+    return err(failure)
+}
+
+func close_rows_with_error(ResultSet rows, Connection connection, SqlError failure) returns result<int, SqlError> {
+    rows.close()
+    connection.close()
+    return err(failure)
+}
+
 func run() returns result<int, SqlError> {
     auto connection = use sql.sqlite_memory()
     auto created = connection.execute("CREATE TABLE items (name TEXT, quantity INTEGER)")
     if created.is_err() {
-        connection.close()
-        return err(created.error())
+        return close_connection_with_error(connection, created.error())
     }
     auto inserted = connection.execute_params(
         "INSERT INTO items (name, quantity) VALUES (?, ?)",
         [sql.string("apples"), sql.int(3)]
     )
     if inserted.is_err() {
-        connection.close()
-        return err(inserted.error())
+        return close_connection_with_error(connection, inserted.error())
     }
     assert(inserted.value() == 1, "one item should be inserted")
 
     auto result = connection.query("SELECT name, quantity FROM items")
     if result.is_err() {
-        connection.close()
-        return err(result.error())
+        return close_connection_with_error(connection, result.error())
     }
     auto rows = result.value()
     auto maybe_row = rows.next()
     if maybe_row.is_err() {
-        rows.close()
-        connection.close()
-        return err(maybe_row.error())
+        return close_rows_with_error(rows, connection, maybe_row.error())
     }
     auto optional_row = maybe_row.value()
     if optional_row.is_none() {
-        rows.close()
-        connection.close()
-        return err(SqlError.from_message("query returned no rows"))
+        return close_rows_with_error(
+            rows,
+            connection,
+            SqlError.from_message("query returned no rows")
+        )
     }
     auto row = optional_row.value()
     auto values = row.values()
     auto name_value = values.get(0)
     if name_value.is_none() {
-        rows.close()
-        connection.close()
-        return err(SqlError.from_message("query row has no name column"))
+        return close_rows_with_error(
+            rows,
+            connection,
+            SqlError.from_message("query row has no name column")
+        )
     }
     auto quantity_value = values.get(1)
     if quantity_value.is_none() {
-        rows.close()
-        connection.close()
-        return err(SqlError.from_message("query row has no quantity column"))
+        return close_rows_with_error(
+            rows,
+            connection,
+            SqlError.from_message("query row has no quantity column")
+        )
     }
     auto name_result = name_value.value().as_string()
     if name_result.is_err() {
-        rows.close()
-        connection.close()
-        return err(name_result.error())
+        return close_rows_with_error(rows, connection, name_result.error())
     }
     auto quantity_result = quantity_value.value().as_int()
     if quantity_result.is_err() {
-        rows.close()
-        connection.close()
-        return err(quantity_result.error())
+        return close_rows_with_error(rows, connection, quantity_result.error())
     }
     auto name = name_result.value()
     auto quantity = quantity_result.value()

@@ -47,6 +47,11 @@ func fetch_status_or_error(string address) returns string {
     return status.value()
 }
 
+func close_stream_with_error(TcpStream stream, string message) returns result<string, string> {
+    stream.close()
+    return err(message)
+}
+
 // Accept one connection, read the request, route on its path, and reply.
 //
 // Everything after accept uses the typed HTTP request/response surface.
@@ -58,8 +63,7 @@ func serve_once(TcpListener listener) returns result<string, string> {
     auto stream = stream_result.value()
     auto request_result = net.HttpRequest.read(stream)
     if request_result.is_err() {
-        stream.close()
-        return err(request_result.error().message())
+        return close_stream_with_error(stream, request_result.error().message())
     }
     auto request = request_result.value()
     auto method = request.method
@@ -68,8 +72,7 @@ func serve_once(TcpListener listener) returns result<string, string> {
     auto headers = net.Headers.new()
     auto header_result = headers.set("content-type", "application/json")
     if header_result.is_err() {
-        stream.close()
-        return err(header_result.error().message())
+        return close_stream_with_error(stream, header_result.error().message())
     }
     auto response_result = net.HttpResponse.from_config(
         route.left,
@@ -77,14 +80,12 @@ func serve_once(TcpListener listener) returns result<string, string> {
         encoding.utf8_encode(route.right)
     )
     if response_result.is_err() {
-        stream.close()
-        return err(response_result.error().message())
+        return close_stream_with_error(stream, response_result.error().message())
     }
     auto response = response_result.value()
     auto write_result = response.write(stream)
     if write_result.is_err() {
-        stream.close()
-        return err(write_result.error().message())
+        return close_stream_with_error(stream, write_result.error().message())
     }
     stream.close()
     return ok(method + " " + path)
