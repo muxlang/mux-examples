@@ -27,9 +27,16 @@ func cleanup_sample() returns void {
 }
 
 func convert() returns result<int, string> {
+    auto already_exists = fs.exists(DATA_FILE)
+    if already_exists.is_err() {
+        return err(already_exists.error().message())
+    }
+    if already_exists.value() {
+        return err("refusing to overwrite existing " + DATA_FILE)
+    }
+
     auto wrote = write_sample()
     if wrote.is_err() {
-        cleanup_sample()
         return err(wrote.error().message())
     }
     print("wrote " + DATA_FILE)

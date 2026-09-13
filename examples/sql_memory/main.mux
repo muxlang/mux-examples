@@ -4,31 +4,49 @@ import std.sql
 
 func run() returns result<int, SqlError> {
     auto connection = use sql.sqlite_memory()
-    use connection.execute("CREATE TABLE items (name TEXT, quantity INTEGER)")
-    auto inserted = use connection.execute_params(
+    auto created = connection.execute("CREATE TABLE items (name TEXT, quantity INTEGER)")
+    if created.is_err() {
+        connection.close()
+        return err(created.error())
+    }
+    auto inserted = connection.execute_params(
         "INSERT INTO items (name, quantity) VALUES (?, ?)",
         [sql.string("apples"), sql.int(3)]
     )
+    if inserted.is_err() {
+        connection.close()
+        return err(inserted.error())
+    }
     assert(inserted == 1, "one item should be inserted")
 
-    auto result = use connection.query("SELECT name, quantity FROM items")
-    auto maybe_row = use result.next()
-    if maybe_row.is_none() {
-        result.close()
+    auto result = connection.query("SELECT name, quantity FROM items")
+    if result.is_err() {
+        connection.close()
+        return err(result.error())
+    }
+    auto rows = result.value()
+    auto maybe_row = rows.next()
+    if maybe_row.is_err() {
+        rows.close()
+        connection.close()
+        return err(maybe_row.error())
+    }
+    if maybe_row.value().is_none() {
+        rows.close()
         connection.close()
         return err(SqlError.from_message("query returned no rows"))
     }
-    auto row = maybe_row.value()
+    auto row = maybe_row.value().value()
     auto values = row.values()
     auto name_value = values.get(0)
     if name_value.is_none() {
-        result.close()
+        rows.close()
         connection.close()
         return err(SqlError.from_message("query row has no name column"))
     }
     auto quantity_value = values.get(1)
     if quantity_value.is_none() {
-        result.close()
+        rows.close()
         connection.close()
         return err(SqlError.from_message("query row has no quantity column"))
     }
@@ -36,7 +54,7 @@ func run() returns result<int, SqlError> {
     auto quantity = use quantity_value.value().as_int()
     print("item: " + name)
     print("quantity: " + quantity.to_string())
-    use result.close()
+    use rows.close()
     connection.close()
     return ok(0)
 }

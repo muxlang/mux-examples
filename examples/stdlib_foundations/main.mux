@@ -72,6 +72,14 @@ func show_cli() returns result<int, CliError> {
     return ok(0)
 }
 
+func report<T is Error>(result<int, T> outcome, string label) returns bool {
+    if outcome.is_err() {
+        print(label + ": " + outcome.error().message())
+        return false
+    }
+    return true
+}
+
 func show_log() returns result<int, LogError> {
     auto logger = log.Logger.new()
     use logger.set_level("debug")
@@ -93,51 +101,15 @@ func main() returns void {
     print("gcd: " + math.gcd(84, 30).to_string())
     print("clamp: " + math.clamp(12.0, 0.0, 10.0).to_string())
 
-    auto encoding_result = show_encoding()
-    if encoding_result.is_err() {
-        print(encoding_result.error().message())
-        return
-    }
-    auto regex_result = show_regex()
-    if regex_result.is_err() {
-        print(regex_result.error().message())
-        return
-    }
-    auto uuid_result = show_uuid()
-    if uuid_result.is_err() {
-        print(uuid_result.error().message())
-        return
-    }
-    auto url_result = show_url()
-    if url_result.is_err() {
-        print(url_result.error().message())
-        return
-    }
-    auto path_result = show_paths()
-    if path_result.is_err() {
-        print(path_result.error().message())
-        return
-    }
-    auto crypto_result = show_crypto()
-    if crypto_result.is_err() {
-        print(crypto_result.error().message())
-        return
-    }
-    auto cli_result = show_cli()
-    if cli_result.is_err() {
-        print(cli_result.error().message())
-        return
-    }
-    auto log_result = show_log()
-    if log_result.is_err() {
-        print(log_result.error().message())
-        return
-    }
-    auto process_result = show_process()
-    if process_result.is_err() {
-        print(process_result.error().message())
-        return
-    }
+    if !report(show_encoding(), "encoding failed") { return }
+    if !report(show_regex(), "regex failed") { return }
+    if !report(show_uuid(), "uuid failed") { return }
+    if !report(show_url(), "url failed") { return }
+    if !report(show_paths(), "paths failed") { return }
+    if !report(show_crypto(), "crypto failed") { return }
+    if !report(show_cli(), "cli failed") { return }
+    if !report(show_log(), "log failed") { return }
+    if !report(show_process(), "process failed") { return }
     print("stdlib foundations complete")
     return
 }
