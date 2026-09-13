@@ -34,7 +34,7 @@ Each of these uses the standard library to complete a real task end to end.
 
 | Example | What it shows | Uses |
 | --- | --- | --- |
-| [csv_to_json](examples/csv_to_json) | read a CSV file, emit each row as JSON | `io`, `data.csv`, `data.json` |
+| [csv_to_json](examples/csv_to_json) | read a CSV file, emit each row as JSON | `fs`, `data.csv`, `data.json` |
 | [inventory_report](examples/inventory_report) | group records and total them | collections, classes |
 | [event_timeline](examples/event_timeline) | order and format timestamped events | `datetime`, `dsa` |
 | [route_finder](examples/route_finder) | shortest path with breadth-first search | `dsa` (graph, queue) |
@@ -42,7 +42,7 @@ Each of these uses the standard library to complete a real task end to end.
 | [stdlib_foundations](examples/stdlib_foundations) | deterministic math, encoding, regex, UUID, URL, path, crypto, CLI, logging, and process operations | `math`, `encoding`, `regex`, `uuid`, `net.url`, `fs`, `crypto`, `cli`, `log`, `process` |
 | [sql_memory](examples/sql_memory) | parameterized writes and typed row decoding in SQLite memory | `sql` |
 | [stream_interfaces](examples/stream_interfaces) | generic Readable, Writable, and Seek capability bounds | `io` |
-| [http_server](examples/http_server) | a server and client over loopback, on two threads | `net`, `sync`, `data.json` |
+| [http_server](examples/http_server) | a server and client over loopback, on two threads | `net`, `sync`, `encoding` |
 
 ## How these are verified
 

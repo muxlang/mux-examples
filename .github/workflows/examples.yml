@@ -59,6 +59,7 @@ jobs:
           # Keeping the label in env avoids injecting untrusted text into the
           # shell from an expression.
           PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR_BRANCH: ${{ github.head_ref }}
         run: |
           set -euo pipefail
           ref=main
@@ -71,6 +72,8 @@ jobs:
                 ;;
             esac
             ref="$paired"
+          elif [ -n "$PR_BRANCH" ] && git ls-remote --exit-code --heads https://github.com/muxlang/mux-compiler.git "refs/heads/${PR_BRANCH}" >/dev/null 2>&1; then
+            ref="$PR_BRANCH"
           fi
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "Building muxlang/mux-compiler@$ref against these examples."

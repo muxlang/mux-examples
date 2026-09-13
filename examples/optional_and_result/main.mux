@@ -23,7 +23,7 @@ func safe_divide(int a, int b) returns result<int, string> {
     return ok(a / b)
 }
 
-// Results compose with `use`, returning an error early when needed.
+// Results compose by forwarding the nested result directly.
 func average(list<int> values) returns result<int, string> {
     if values.is_empty() {
         return err("no values to average")

@@ -29,18 +29,21 @@ func cleanup_sample() returns void {
 func convert() returns result<int, string> {
     auto wrote = write_sample()
     if wrote.is_err() {
+        cleanup_sample()
         return err(wrote.error().message())
     }
     print("wrote " + DATA_FILE)
 
     auto raw_result = fs.read_file(DATA_FILE)
     if raw_result.is_err() {
+        cleanup_sample()
         return err(raw_result.error().message())
     }
     auto raw = raw_result.value()
 
     auto table_result = csv.parse_with_headers(raw)
     if table_result.is_err() {
+        cleanup_sample()
         return err(table_result.error().message())
     }
     auto table = table_result.value()
@@ -79,6 +82,7 @@ func convert() returns result<int, string> {
 
     auto removed = fs.remove(DATA_FILE)
     if removed.is_err() {
+        cleanup_sample()
         return err(removed.error().message())
     }
     print("")

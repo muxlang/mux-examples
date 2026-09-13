@@ -14,12 +14,26 @@ func run() returns result<int, SqlError> {
     auto result = use connection.query("SELECT name, quantity FROM items")
     auto maybe_row = use result.next()
     if maybe_row.is_none() {
+        result.close()
         connection.close()
         return err(SqlError.from_message("query returned no rows"))
     }
     auto row = maybe_row.value()
-    auto name = use row.values()[0].as_string()
-    auto quantity = use row.values()[1].as_int()
+    auto values = row.values()
+    auto name_value = values.get(0)
+    if name_value.is_none() {
+        result.close()
+        connection.close()
+        return err(SqlError.from_message("query row has no name column"))
+    }
+    auto quantity_value = values.get(1)
+    if quantity_value.is_none() {
+        result.close()
+        connection.close()
+        return err(SqlError.from_message("query row has no quantity column"))
+    }
+    auto name = use name_value.value().as_string()
+    auto quantity = use quantity_value.value().as_int()
     print("item: " + name)
     print("quantity: " + quantity.to_string())
     use result.close()

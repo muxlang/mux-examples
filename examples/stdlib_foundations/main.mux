@@ -64,7 +64,11 @@ func show_cli() returns result<int, CliError> {
     use parser.add_option("mode", "m", true, true)
     auto parsed = use parser.parse(["--mode", "fast"])
     auto values = use parsed.values("mode")
-    print("cli mode: " + values[0])
+    auto mode = values.get(0)
+    if mode.is_none() {
+        return err(CliError.from_message("mode option produced no value"))
+    }
+    print("cli mode: " + mode.value())
     return ok(0)
 }
 
