@@ -1,0 +1,139 @@
+// Exercise deterministic, offline standard-library building blocks.
+//
+// Every input is fixed so this example can run identically in local builds and
+// in the examples CI job on every supported host.
+
+import std.cli
+import std.crypto
+import std.encoding
+import std.fs
+import std.log
+import std.math
+import std.net.url
+import std.process
+import std.regex
+import std.uuid
+
+func show_encoding() returns result<int, EncodingError> {
+    auto value = use encoding.hex_decode("4d7578")
+    assert(value == b"Mux", "hex decoding must recover the original bytes")
+    print("hex: " + encoding.hex_encode(value))
+    print("base64: " + encoding.base64_encode(value))
+    return ok(0)
+}
+
+func show_regex() returns result<int, RegexError> {
+    auto pattern = use regex.Regex.from_pattern("mux")
+    auto matched = use pattern.full_match("mux")
+    assert(matched, "the fixed regex must match its input")
+    print("regex match: " + matched.to_string())
+    return ok(0)
+}
+
+func show_uuid() returns result<int, UuidError> {
+    auto value = use uuid.parse_uuid("550e8400-e29b-41d4-a716-446655440000")
+    print("uuid: " + value.to_string())
+    return ok(0)
+}
+
+func show_url() returns result<int, UrlError> {
+    auto value = use url.Url.parse("https://example.com/api/")
+    auto joined = use value.join("v1")
+    print("url origin: " + value.origin())
+    print("url joined: " + joined.to_string())
+    return ok(0)
+}
+
+func show_paths() returns result<int, FsError> {
+    auto joined = use fs.join("reports", "summary.txt")
+    auto name = use fs.basename(joined)
+    print("basename: " + name)
+    return ok(0)
+}
+
+func show_crypto() returns result<int, CryptoError> {
+    auto digest = crypto.sha256(b"Mux")
+    auto mac = use crypto.hmac_sha256(b"fixed key", b"Mux")
+    print("sha256 bytes: " + digest.size().to_string())
+    print("hmac bytes: " + mac.size().to_string())
+    return ok(0)
+}
+
+func show_cli() returns result<int, CliError> {
+    auto parser = cli.CliParser.new()
+    use parser.add_option("mode", "m", true, true)
+    auto parsed = use parser.parse(["--mode", "fast"])
+    auto values = use parsed.values("mode")
+    print("cli mode: " + values[0])
+    return ok(0)
+}
+
+func show_log() returns result<int, LogError> {
+    auto logger = log.Logger.new()
+    use logger.set_level("debug")
+    use logger.set_name("foundations")
+    use logger.field("example", "stdlib")
+    print("log configured")
+    return ok(0)
+}
+
+func show_process() returns result<int, ProcessError> {
+    auto command = use process.Command.new()
+    use command.set_program("mux")
+    use command.arg("--version")
+    print("process command configured")
+    return ok(0)
+}
+
+func main() returns void {
+    print("gcd: " + math.gcd(84, 30).to_string())
+    print("clamp: " + math.clamp(12.0, 0.0, 10.0).to_string())
+
+    auto encoding_result = show_encoding()
+    if encoding_result.is_err() {
+        print(encoding_result.error().message())
+        return
+    }
+    auto regex_result = show_regex()
+    if regex_result.is_err() {
+        print(regex_result.error().message())
+        return
+    }
+    auto uuid_result = show_uuid()
+    if uuid_result.is_err() {
+        print(uuid_result.error().message())
+        return
+    }
+    auto url_result = show_url()
+    if url_result.is_err() {
+        print(url_result.error().message())
+        return
+    }
+    auto path_result = show_paths()
+    if path_result.is_err() {
+        print(path_result.error().message())
+        return
+    }
+    auto crypto_result = show_crypto()
+    if crypto_result.is_err() {
+        print(crypto_result.error().message())
+        return
+    }
+    auto cli_result = show_cli()
+    if cli_result.is_err() {
+        print(cli_result.error().message())
+        return
+    }
+    auto log_result = show_log()
+    if log_result.is_err() {
+        print(log_result.error().message())
+        return
+    }
+    auto process_result = show_process()
+    if process_result.is_err() {
+        print(process_result.error().message())
+        return
+    }
+    print("stdlib foundations complete")
+    return
+}

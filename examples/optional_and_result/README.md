@@ -9,8 +9,10 @@ Mux has no exceptions. Two types cover what exceptions usually do:
 - `result<T, E>` - the operation might fail, and the failure has something to
   say. Opened with `ok(v)` / `err(e)`.
 
-Both are opened with `match`, so the compiler makes you handle the unhappy path.
-You cannot accidentally use a value that was never there.
+Use `use` when a missing value or error should propagate; use `is_some()` /
+`is_err()` inspection or `match` when both branches need different work. The
+compiler still makes the unhappy path explicit, so you cannot accidentally use
+a value that was never there.
 
 The `average` function shows how results compose: it returns early with `err`,
 and the error from a nested call travels back up untouched.

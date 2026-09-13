@@ -24,10 +24,11 @@ func label_for(int ts) returns string {
 }
 
 func render(int ts) returns string {
-    match datetime.format(ts, "%Y-%m-%d %H:%M UTC") {
-        ok(text) { return text }
-        err(e) { return "unformattable (" + e + ")" }
+    auto formatted = datetime.format(ts, "%Y-%m-%d %H:%M UTC")
+    if formatted.is_err() {
+        return "unformattable (" + formatted.error().message() + ")"
     }
+    return formatted.value()
 }
 
 func main() returns void {
@@ -45,14 +46,18 @@ func main() returns void {
     // Calendar fields come back as results, since not every integer is a valid
     // timestamp on every platform.
     print("")
-    match datetime.hour(ROLLBACK) {
-        ok(h) { print("rollback hour (UTC): " + h.to_string()) }
-        err(e) { print("hour failed: " + e) }
+    auto hour = datetime.hour(ROLLBACK)
+    if hour.is_ok() {
+        print("rollback hour (UTC): " + hour.value().to_string())
+    } else {
+        print("hour failed: " + hour.error().message())
     }
 
-    match datetime.weekday(LAUNCH) {
-        ok(d) { print("launch weekday (0=Sunday): " + d.to_string()) }
-        err(e) { print("weekday failed: " + e) }
+    auto weekday = datetime.weekday(LAUNCH)
+    if weekday.is_ok() {
+        print("launch weekday (0=Sunday): " + weekday.value().to_string())
+    } else {
+        print("weekday failed: " + weekday.error().message())
     }
 
     // Elapsed time is ordinary integer arithmetic on the timestamps.

@@ -6,64 +6,34 @@
 //
 // Two things about this code are worth more attention than the sockets.
 //
-// FIRST, the shape. Every fallible call returns a `result` and Mux has no
-// exceptions and no propagation operator, so a nested `match` per call would
-// bury the logic under indentation. The style used here instead is: declare the
-// variable, `match` immediately, bind on `ok`, and RETURN on `err`. It costs
-// four lines per call but the function stays flat and reads top to bottom.
-// Prefer it over nesting once you have more than two fallible calls in a row.
+// FIRST, the shape. Every fallible call returns a `result`; use `match` when
+// both outcomes need different work, and `use` for straightforward flow. The
+// client helper can propagate its HttpError directly. The server helper also
+// performs network and synchronization operations, so it converts those
+// different error types to one display string at its boundary.
 //
-// SECOND, reading a field. `stringify` gives back the JSON ENCODING of a value,
-// so a string field arrives as `"/echo"` with the quotes. The typed accessors
-// (`as_string`, `as_int`, ...) give back the value itself, and return an
-// `optional` because a field holding the wrong kind is ordinary when reading a
-// document you did not write.
-
-import std.data.json
 import std.net
 import std.sync
+import std.encoding
 
-// One string field of a JSON object, decoded.
-//
-// A missing key and a key holding the wrong kind are different failures, and
-// both are reported rather than papered over with an empty string.
-//
-// The accessor's error says what the field actually held - "expected a string,
-// found an int" - so it is passed through rather than replaced with a generic
-// message that throws that away.
-func field(map<string, Json> obj, string key) returns string {
-    if !obj.contains(key) {
-        return "<missing>"
-    }
-    match obj[key].as_string() {
-        ok(text) { return text }
-        err(e) { return "<" + e + ">" }
-    }
-}
-
-// One integer field of a JSON object, as text.
-//
-// A status is a number in the document, so `as_string` would report it as the
-// wrong kind. Which accessor to reach for is decided by what the field holds,
-// not by what you want to do with it afterwards.
-func int_field(map<string, Json> obj, string key) returns string {
-    if !obj.contains(key) {
-        return "<missing>"
-    }
-    match obj[key].as_int() {
-        ok(n) { return n.to_string() }
-        err(e) { return "<" + e + ">" }
-    }
-}
-
-func response_for(string path) returns string {
+func response_status(string path) returns int {
     if path == "/health" {
-        return "{\"status\":200,\"body\":{\"ok\":true}}"
+        return 200
     }
     if path == "/echo" {
-        return "{\"status\":201,\"body\":{\"echoed\":true}}"
+        return 201
     }
-    return "{\"status\":404,\"body\":{\"error\":\"no such route\"}}"
+    return 404
+}
+
+func response_body(string path) returns string {
+    if path == "/health" {
+        return "{\"ok\":true}"
+    }
+    if path == "/echo" {
+        return "{\"echoed\":true}"
+    }
+    return "{\"error\":\"no such route\"}"
 }
 
 // Send one GET and report the status the server replied with.
@@ -71,113 +41,106 @@ func response_for(string path) returns string {
 // Returns the status as text rather than printing it, so the caller decides
 // when it is shown. Two threads printing race, and an example whose line order
 // can vary cannot be checked against a recorded output.
-func fetch_status(string address) returns string {
-    auto body = "{\"method\":\"GET\",\"url\":\"http://" + address + "/echo\"}"
-    match json.parse(body) {
-        ok(request) {
-            match net.http.request(request) {
-                ok(response) {
-                    match json.to_map(response) {
-                        ok(response_map) { return int_field(response_map, "status") }
-                        err(e) { return "bad response: " + e }
-                    }
-                }
-                err(e) { return "request failed: " + e }
-            }
-        }
-        err(e) { return "bad request json: " + e }
+func fetch_status(string address) returns result<string, HttpError> {
+    auto request = net.HttpRequest.new()
+    request.method = "GET"
+    request.url = "http://" + address + "/echo"
+    auto response = use request.send()
+    return ok(response.status.to_string())
+}
+
+func fetch_status_or_error(string address) returns string {
+    auto status = fetch_status(address)
+    if status.is_err() {
+        return "error: " + status.error().message()
     }
+    return status.value()
 }
 
 // Accept one connection, read the request, route on its path, and reply.
 //
-// The outer `match` cannot be flattened: `accept` yields a TcpStream, a class
-// type, and a variable cannot be declared without initializing it, so there is
-// nothing to bind before the match (mux-compiler#393). Everything after it is
-// flattened by hand.
+// Everything after accept uses the typed HTTP request/response surface.
 func serve_once(TcpListener listener) returns result<string, string> {
-    match listener.accept() {
-        ok(stream) {
-            map<string, Json> request_map = {:}
-            match net.http.read_request(stream) {
-                ok(request) {
-                    match json.to_map(request) {
-                        ok(m) { request_map = m }
-                        err(e) { stream.close() return err("not an object: " + e) }
-                    }
-                }
-                err(e) { stream.close() return err("read failed: " + e) }
-            }
-
-            auto method = field(request_map, "method")
-            auto path = field(request_map, "path")
-
-            auto reply = json.parse(response_for(path))
-            match reply {
-                ok(response) {
-                    match net.http.write_response(stream, response) {
-                        ok(_) { stream.close() return ok(method + " " + path) }
-                        err(e) { stream.close() return err("write failed: " + e) }
-                    }
-                }
-                err(e) { stream.close() return err("bad response json: " + e) }
-            }
-        }
-        err(e) { return err("accept failed: " + e) }
+    auto stream_result = listener.accept()
+    if stream_result.is_err() {
+        return err(stream_result.error().message())
     }
+    auto stream = stream_result.value()
+    auto request_result = net.HttpRequest.read(stream)
+    if request_result.is_err() {
+        return err(request_result.error().message())
+    }
+    auto request = request_result.value()
+    auto method = request.method
+    auto path = request.url
+    auto headers = net.Headers.new()
+    auto header_result = headers.set("content-type", "application/json")
+    if header_result.is_err() {
+        return err(header_result.error().message())
+    }
+    auto response_result = net.HttpResponse.from_config(
+        response_status(path),
+        headers,
+        encoding.utf8_encode(response_body(path))
+    )
+    if response_result.is_err() {
+        return err(response_result.error().message())
+    }
+    auto response = response_result.value()
+    auto write_result = response.write(stream)
+    if write_result.is_err() {
+        return err(write_result.error().message())
+    }
+    stream.close()
+    return ok(method + " " + path)
+}
+
+func run_server() returns result<int, string> {
+    auto listener_result = net.TcpListener.bind("127.0.0.1:0")
+    if listener_result.is_err() {
+        return err(listener_result.error().message())
+    }
+    auto listener = listener_result.value()
+    auto address_result = listener.local_addr()
+    if address_result.is_err() {
+        listener.close()
+        return err(address_result.error().message())
+    }
+    auto address = address_result.value()
+    // The client records its result rather than printing it. Two threads
+    // printing race, and an example whose line order can vary cannot be
+    // checked against a recorded output. `join` below makes the write visible.
+    auto client_status = "(never ran)"
+    auto client_result = sync.spawn(func() returns void {
+        client_status = fetch_status_or_error(address)
+        return
+    })
+    if client_result.is_err() {
+        listener.close()
+        return err(client_result.error().message())
+    }
+    auto client = client_result.value()
+
+    auto served = serve_once(listener)
+    auto joined = client.join()
+    listener.close()
+    if joined.is_err() {
+        return err(joined.error().message())
+    }
+    if served.is_err() {
+        return err(served.error())
+    }
+    auto summary = served.value()
+    print("server handled " + summary)
+    print("client saw status " + client_status)
+    return ok(0)
 }
 
 func main() returns void {
-    auto listener_result = net.TcpListener.bind("127.0.0.1:0")
-
-    match listener_result {
-        ok(listener) {
-            auto address = ""
-            match listener.local_addr() {
-                ok(addr) { address = addr }
-                err(e) {
-                    print("bind address unavailable: " + e)
-                    return
-                }
-            }
-
-            // The client records its result rather than printing it. Two
-            // threads printing race, and an example whose line order can vary
-            // cannot be checked against a recorded output. `client_status` is
-            // captured by the closure, so both sides name the same storage, and
-            // `join` below is what makes the write visible here.
-            auto client_status = "(never ran)"
-
-            // The client runs on its own thread, because accept() blocks until
-            // someone connects and the connection has to come from somewhere.
-            //
-            // The body is one assignment on purpose: the matching lives in
-            // `fetch_status` and the closure only stores what it returns, so the
-            // thread body says what it does rather than how.
-            auto client = sync.spawn(func() returns void {
-                client_status = fetch_status(address)
-                return
-            })
-
-            match serve_once(listener) {
-                ok(summary) { print("server handled " + summary) }
-                err(e) { print("server error: " + e) }
-            }
-
-            match client {
-                ok(thread) {
-                    match thread.join() {
-                        ok(_) { print("client saw status " + client_status) }
-                        err(e) { print("join failed: " + e) }
-                    }
-                }
-                err(e) { print("spawn failed: " + e) }
-            }
-
-            listener.close()
-        }
-        err(e) { print("could not bind: " + e) }
+    auto result = run_server()
+    if result.is_err() {
+        print("http server failed: " + result.error().message())
+        return
     }
-
     return
 }

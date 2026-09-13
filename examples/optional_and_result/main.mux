@@ -1,9 +1,9 @@
 // Handling absence and failure without exceptions.
 //
 // Mux has no exceptions. A value that might be missing is an `optional<T>`, and
-// an operation that might fail is a `result<T, E>`. Both are opened with
-// `match`, so the compiler makes you handle the unhappy path - you cannot
-// accidentally use a value that was never there.
+// an operation that might fail is a `result<T, E>`. Use `use` for straightforward
+// propagation or `match` when both branches need distinct work; the compiler
+// always makes the unhappy path explicit.
 
 // Missing is not the same as failed. Looking up a name that is not present is
 // ordinary, so it returns an optional.
@@ -23,7 +23,7 @@ func safe_divide(int a, int b) returns result<int, string> {
     return ok(a / b)
 }
 
-// Results compose by matching and returning early.
+// Results compose with `use`, returning an error early when needed.
 func average(list<int> values) returns result<int, string> {
     if values.is_empty() {
         return err("no values to average")

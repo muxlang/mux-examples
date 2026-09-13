@@ -1,0 +1,5 @@
+readable: he
+writable bytes: 2
+seek position: 0
+output: ok
+stream interfaces complete

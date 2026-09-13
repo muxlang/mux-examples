@@ -61,19 +61,54 @@ if ! command -v "$MUX_BIN" >/dev/null 2>&1 && [ ! -x "$MUX_BIN" ]; then
     exit 2
 fi
 
-# A per-example time limit, when the platform offers one. `timeout` is GNU
-# coreutils and is absent from a default macOS install, where requiring it would
-# turn every example into a command-not-found failure. The limit only guards
-# against an example that hangs, so running without it loses a safety net rather
-# than the check itself. `gtimeout` is what Homebrew's coreutils installs.
-timeout_cmd=()
-if command -v timeout >/dev/null 2>&1; then
-    timeout_cmd=(timeout "$TIMEOUT_SECS")
-elif command -v gtimeout >/dev/null 2>&1; then
-    timeout_cmd=(gtimeout "$TIMEOUT_SECS")
-else
-    echo "note: no 'timeout' available, running without a per-example time limit" >&2
-fi
+# A per-example time limit is required on every host. `timeout` is GNU
+# coreutils and is absent from a default macOS install; `gtimeout` is what
+# Homebrew's coreutils installs. When neither exists, use a Bash process-group
+# fallback so a hung compiler or compiled program cannot outlive the check.
+run_bounded() {
+    local secs="$1"
+    shift
+
+    # Job control gives the background command its own process group. Killing
+    # the group matters because `mux run` starts a compiled child whose stdout
+    # may otherwise keep the command-substitution pipe open after its parent
+    # exits.
+    set -m
+    "$@" &
+    local pid=$!
+
+    (
+        sleep "$secs"
+        if kill -0 "$pid" 2>/dev/null; then
+            kill -TERM -"$pid" 2>/dev/null || true
+            sleep 1
+            kill -KILL -"$pid" 2>/dev/null || true
+        fi
+    ) &
+    local watcher=$!
+    set +m
+    local status=0
+    wait "$pid" || status=$?
+    # The watcher owns a child `sleep`; signal its process group so a normal
+    # (non-timeout) example does not leave that sleep behind or wait for the
+    # full deadline before returning.
+    kill -KILL -"$watcher" 2>/dev/null || true
+    wait "$watcher" 2>/dev/null || true
+    # Sweep anything that outlived the direct child. The process group contains
+    # only this example invocation.
+    kill -KILL -"$pid" 2>/dev/null || true
+    return "$status"
+}
+
+run_example() {
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$TIMEOUT_SECS" "$@"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        gtimeout "$TIMEOUT_SECS" "$@"
+    else
+        run_bounded "$TIMEOUT_SECS" "$@"
+    fi
+}
 
 if [ ${#selected[@]} -eq 0 ]; then
     while IFS= read -r dir; do
@@ -106,14 +141,16 @@ for name in "${selected[@]}"; do
         continue
     fi
 
-    actual="$(cd "$dir" && "${timeout_cmd[@]}" "$MUX_BIN" run main.mux 2>&1)"
+    actual="$(cd "$dir" && run_example "$MUX_BIN" run main.mux 2>&1)"
     status=$?
 
-    # Compiling leaves an executable beside the source; it is not output.
-    # The compiler and some examples create local outputs beside the source.
-    # Remove them even when execution times out or fails, so a killed run
-    # cannot leave generated input/output in the teaching tree.
-    rm -f -- "$dir/main" "$dir/employees.csv"
+    # Compiling leaves an executable beside the source; it is not output. The
+    # compiler uses the native `.exe` spelling for its default output on
+    # Windows, so remove both spellings. The compiler and some examples create
+    # local outputs beside the source. Remove them even when execution times
+    # out or fails, so a killed run cannot leave generated input/output in the
+    # teaching tree.
+    rm -f -- "$dir/main" "$dir/main.exe" "$dir/employees.csv"
 
     if [ $status -ne 0 ]; then
         echo "FAIL $name (exit $status)"

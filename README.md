@@ -38,13 +38,19 @@ Each of these uses the standard library to complete a real task end to end.
 | [inventory_report](examples/inventory_report) | group records and total them | collections, classes |
 | [event_timeline](examples/event_timeline) | order and format timestamped events | `datetime`, `dsa` |
 | [route_finder](examples/route_finder) | shortest path with breadth-first search | `dsa` (graph, queue) |
-| [dice_simulation](examples/dice_simulation) | seeded sampling with assertions | `random`, `assert` |
+| [dice_simulation](examples/dice_simulation) | seeded sampling with assertions | `random`, built-in `assert` |
+| [stdlib_foundations](examples/stdlib_foundations) | deterministic math, encoding, regex, UUID, URL, path, crypto, CLI, logging, and process operations | `math`, `encoding`, `regex`, `uuid`, `net.url`, `fs`, `crypto`, `cli`, `log`, `process` |
+| [sql_memory](examples/sql_memory) | parameterized writes and typed row decoding in SQLite memory | `sql` |
+| [stream_interfaces](examples/stream_interfaces) | generic Readable, Writable, and Seek capability bounds | `io` |
 | [http_server](examples/http_server) | a server and client over loopback, on two threads | `net`, `sync`, `data.json` |
 
 ## How these are verified
 
 `scripts/run-examples.sh` compiles and runs every example and diffs its output
 against the `expected_output.txt` recorded next to it.
+Each invocation has a 120-second default wall-clock limit (configurable with
+`TIMEOUT_SECS`); the runner keeps that bound on macOS even when neither GNU
+`timeout` nor Homebrew `gtimeout` is installed.
 
 ```bash
 MUX_BIN=/path/to/mux ./scripts/run-examples.sh          # check all
@@ -66,6 +72,10 @@ That script is the shared contract. Three things call it:
 The second is what makes these examples a promise about a compiler you can
 actually install, rather than only about `main`.
 
+The runner removes both `main` and `main.exe` after each run. This keeps the
+same Bash-based check clean on Unix and Windows, where the compiler's default
+executable name includes the native `.exe` suffix.
+
 ## Adding an example
 
 1. Create `examples/<name>/main.mux`.
@@ -74,9 +84,12 @@ actually install, rather than only about `main`.
 4. Read the generated `expected_output.txt` before committing it. It is the
    assertion, so it has to be output you actually want.
 
-An example must be **deterministic and offline**. No clock, no network, no
-unseeded randomness, no dependence on the filesystem beyond files it writes
-itself. Anything else cannot be checked against a recorded result.
+An example must be **deterministic and offline**. No clock, no external network,
+no unseeded randomness, and no dependence on the filesystem beyond files it
+writes itself. A loopback-only example may use an ephemeral local socket when
+that is the behavior it teaches (as `http_server` does); it must keep all
+addresses, ports, and scheduling out of the recorded output. Anything else
+cannot be checked against a recorded result.
 
 ## What this repo is not
 

@@ -1,23 +1,23 @@
 warning: 2 warnings
 
 warning[W0300]: binding 'i' is never read
---> main.mux:24:9
+--> main.mux:23:9
    |
-24 |     for int i in range(0, count) {
+23 |     for int i in range(0, count) {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
-25 |         // next_range is inclusive of min and exclusive of max, so this is 1..6.
+24 |         // next_range is inclusive of min and exclusive of max, so this is 1..6.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-26 |         auto face = random.next_range(1, SIDES + 1)
+25 |         auto face = random.next_range(1, SIDES + 1)
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27 |         tally[face] = tally[face] + 1
+26 |         tally[face] = tally[face] + 1
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning[W0300]: binding 'i' is never read
---> main.mux:36:9
+--> main.mux:35:9
    |
-36 |     for int i in range(0, width) {
+35 |     for int i in range(0, width) {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
-37 |         out = out + "#"
+36 |         out = out + "#"
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 DISTRIBUTION OF 6000 ROLLS
@@ -32,4 +32,4 @@ DISTRIBUTION OF 6000 ROLLS
 total rolls: 6000
 expected per face: 1000
 all assertions passed
-reseeding reproduced roll: 4
+reseeding reproduced roll: 5

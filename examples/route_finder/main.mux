@@ -48,11 +48,11 @@ func shortest_route(Graph<string> net, string start, string goal) returns list<s
 
     auto found = false
     while !found && !frontier.is_empty() {
-        auto current = ""
-        match frontier.dequeue() {
-            some(station) { current = station }
-            none { return [] }
+        auto next_station = frontier.dequeue()
+        if next_station.is_none() {
+            return []
         }
+        auto current = next_station.value()
 
         if current == goal {
             found = true

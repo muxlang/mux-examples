@@ -1,0 +1,15 @@
+gcd: 6
+clamp: 10.0
+hex: 4d7578
+base64: TXV4
+regex match: true
+uuid: 550e8400-e29b-41d4-a716-446655440000
+url origin: https://example.com
+url joined: https://example.com/api/v1
+basename: summary.txt
+sha256 bytes: 32
+hmac bytes: 32
+cli mode: fast
+log configured
+process command configured
+stdlib foundations complete

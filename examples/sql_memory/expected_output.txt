@@ -1,0 +1,3 @@
+item: apples
+quantity: 3
+sql memory complete
