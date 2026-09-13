@@ -50,8 +50,20 @@ func run() returns result<int, SqlError> {
         connection.close()
         return err(SqlError.from_message("query row has no quantity column"))
     }
-    auto name = use name_value.value().as_string()
-    auto quantity = use quantity_value.value().as_int()
+    auto name_result = name_value.value().as_string()
+    if name_result.is_err() {
+        rows.close()
+        connection.close()
+        return err(name_result.error())
+    }
+    auto quantity_result = quantity_value.value().as_int()
+    if quantity_result.is_err() {
+        rows.close()
+        connection.close()
+        return err(quantity_result.error())
+    }
+    auto name = name_result.value()
+    auto quantity = quantity_result.value()
     print("item: " + name)
     print("quantity: " + quantity.to_string())
     use rows.close()
