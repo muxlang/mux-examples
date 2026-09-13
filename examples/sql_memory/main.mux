@@ -31,12 +31,13 @@ func run() returns result<int, SqlError> {
         connection.close()
         return err(maybe_row.error())
     }
-    if maybe_row.value().is_none() {
+    auto optional_row = maybe_row.value()
+    if optional_row.is_none() {
         rows.close()
         connection.close()
         return err(SqlError.from_message("query returned no rows"))
     }
-    auto row = maybe_row.value().value()
+    auto row = optional_row.value()
     auto values = row.values()
     auto name_value = values.get(0)
     if name_value.is_none() {
