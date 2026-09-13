@@ -16,24 +16,14 @@ import std.net
 import std.sync
 import std.encoding
 
-func response_status(string path) returns int {
+func response(string path) returns tuple<int, string> {
     if path == "/health" {
-        return 200
+        return (200, "{\"ok\":true}")
     }
     if path == "/echo" {
-        return 201
+        return (201, "{\"echoed\":true}")
     }
-    return 404
-}
-
-func response_body(string path) returns string {
-    if path == "/health" {
-        return "{\"ok\":true}"
-    }
-    if path == "/echo" {
-        return "{\"echoed\":true}"
-    }
-    return "{\"error\":\"no such route\"}"
+    return (404, "{\"error\":\"no such route\"}")
 }
 
 // Send one GET and report the status the server replied with.
@@ -74,6 +64,7 @@ func serve_once(TcpListener listener) returns result<string, string> {
     auto request = request_result.value()
     auto method = request.method
     auto path = request.url
+    auto route = response(path)
     auto headers = net.Headers.new()
     auto header_result = headers.set("content-type", "application/json")
     if header_result.is_err() {
@@ -81,9 +72,9 @@ func serve_once(TcpListener listener) returns result<string, string> {
         return err(header_result.error().message())
     }
     auto response_result = net.HttpResponse.from_config(
-        response_status(path),
+        route.left,
         headers,
-        encoding.utf8_encode(response_body(path))
+        encoding.utf8_encode(route.right)
     )
     if response_result.is_err() {
         stream.close()

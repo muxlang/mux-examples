@@ -17,7 +17,7 @@ func run() returns result<int, SqlError> {
         connection.close()
         return err(inserted.error())
     }
-    assert(inserted == 1, "one item should be inserted")
+    assert(inserted.value() == 1, "one item should be inserted")
 
     auto result = connection.query("SELECT name, quantity FROM items")
     if result.is_err() {
