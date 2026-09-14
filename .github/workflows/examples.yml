@@ -119,7 +119,7 @@ jobs:
 
       - name: Reject compiled example debris
         run: |
-          if find examples -type f -name main -print -quit | grep -q .; then
-            echo "compiled example executable left in the checkout" >&2
+          if find examples -type f \( -name main -o -name 'main.exe' \) -print -quit | grep -q .; then
+            echo "compiled example executable left in the checkout (main or main.exe)" >&2
             exit 1
           fi

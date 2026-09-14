@@ -1,82 +1,107 @@
 // Read a CSV file and emit each row as a JSON object.
 //
 // This is the classic glue task: text in one shape, text out in another, with
-// every step able to fail. Note how the failures stack - reading, parsing, and
-// serializing each return a result, and each is opened with `match` before the
-// value inside is used.
+// every step able to fail. `use` keeps the happy path flat while preserving the
+// original error when any step fails.
 //
 // The program writes its own input file so it is self-contained, then removes
 // it on the way out.
 
-import std.io
+import std.fs
 import std.data.csv
 import std.data.json
 
 const string DATA_FILE = "employees.csv"
 
-func write_sample() returns result<void, string> {
+func write_sample() returns result<void, fs.FsError> {
     string contents = "name,role,years\nAda,engineer,7\nGrace,admiral,12\nAlan,analyst,4"
-    return io.write_file(DATA_FILE, contents)
+    return fs.write_file(DATA_FILE, contents)
+}
+
+func cleanup_sample() returns void {
+    auto removed = fs.remove(DATA_FILE)
+    if removed.is_err() {
+        print("cleanup failed: " + removed.error().message())
+    }
+    return
+}
+
+func convert() returns result<int, string> {
+    auto already_exists = fs.exists(DATA_FILE)
+    if already_exists.is_err() {
+        return err(already_exists.error().message())
+    }
+    if already_exists.value() {
+        return err("refusing to overwrite existing " + DATA_FILE)
+    }
+
+    auto wrote = write_sample()
+    if wrote.is_err() {
+        return err(wrote.error().message())
+    }
+    print("wrote " + DATA_FILE)
+
+    auto raw_result = fs.read_file(DATA_FILE)
+    if raw_result.is_err() {
+        cleanup_sample()
+        return err(raw_result.error().message())
+    }
+    auto raw = raw_result.value()
+
+    auto table_result = csv.parse_with_headers(raw)
+    if table_result.is_err() {
+        cleanup_sample()
+        return err(table_result.error().message())
+    }
+    auto table = table_result.value()
+    print("columns: " + table.headers.to_string())
+    print("rows:    " + table.rows.size().to_string())
+    print("")
+
+    // Rebuild each row as a name -> value map, then hand it to JSON. A short
+    // row has no value at an index, so inspect the optional returned by `get`
+    // instead of indexing directly.
+    for list<string> row in table.rows {
+        map<string, string> record = {:}
+        for int i in range(0, table.headers.size()) {
+            auto maybe_value = row.get(i)
+            if maybe_value.is_some() {
+                record[table.headers[i]] = maybe_value.value()
+            } else {
+                record[table.headers[i]] = ""
+            }
+        }
+
+        auto obj_result = json.from_map(record)
+        if obj_result.is_err() {
+            cleanup_sample()
+            return err(obj_result.error().message())
+        }
+        auto obj = obj_result.value()
+        auto text_result = obj.stringify(none)
+        if text_result.is_err() {
+            cleanup_sample()
+            return err(text_result.error().message())
+        }
+        auto text = text_result.value()
+        print(text)
+    }
+
+    auto removed = fs.remove(DATA_FILE)
+    if removed.is_err() {
+        cleanup_sample()
+        return err(removed.error().message())
+    }
+    print("")
+    print("cleaned up " + DATA_FILE)
+    return ok(0)
 }
 
 func main() returns void {
-    match write_sample() {
-        ok(_) { print("wrote " + DATA_FILE) }
-        err(e) {
-            print("could not write sample: " + e)
-            return
-        }
+    auto result = convert()
+    if result.is_err() {
+        print("csv conversion failed: " + result.error())
+        return
     }
-
-    string raw = ""
-    match io.read_file(DATA_FILE) {
-        ok(contents) { raw = contents }
-        err(e) {
-            print("could not read sample: " + e)
-            return
-        }
-    }
-
-    match csv.parse_with_headers(raw) {
-        ok(table) {
-            print("columns: " + table.headers.to_string())
-            print("rows:    " + table.rows.size().to_string())
-            print("")
-
-            // Rebuild each row as a name -> value map, then hand it to JSON.
-            //
-            // A row is not guaranteed to have as many fields as there are
-            // headers - a short line in the file produces a short row - so the
-            // field is read with `get`, which returns an optional, rather than
-            // indexed directly. Indexing would panic on the first ragged row,
-            // which is the kind of input a real CSV eventually contains.
-            for list<string> row in table.rows {
-                map<string, string> record = {:}
-                for int i in range(0, table.headers.size()) {
-                    match row.get(i) {
-                        some(value) { record[table.headers[i]] = value }
-                        none { record[table.headers[i]] = "" }
-                    }
-                }
-
-                match json.from_map(record) {
-                    ok(obj) {
-                        match obj.stringify(none) {
-                            ok(text) { print(text) }
-                            err(e) { print("stringify failed: " + e) }
-                        }
-                    }
-                    err(e) { print("could not build object: " + e) }
-                }
-            }
-        }
-        err(e) { print("could not parse csv: " + e) }
-    }
-
-    match io.remove(DATA_FILE) {
-        ok(_) { print("") print("cleaned up " + DATA_FILE) }
-        err(e) { print("cleanup failed: " + e) }
-    }
-
     return
 }

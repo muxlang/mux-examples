@@ -1,0 +1,71 @@
+// Generic stream helpers use the small Readable, Writable, and Seek contracts.
+// The concrete handles stay shared resources; the bounds only describe the
+// capability required by each helper.
+
+import std.io.*
+
+func read_prefix<T is Readable>(T source) returns result<bytes, IoError> {
+    return source.read(2)
+}
+
+func write_text<T is Writable>(T target) returns result<int, IoError> {
+    return target.write(b"ok")
+}
+
+func rewind<T is Seek>(T stream) returns result<int, IoError> {
+    return stream.seek(0)
+}
+
+func run() returns result<int, IoError> {
+    Reader reader = Reader.from_bytes(b"hello")
+    auto prefix_result = read_prefix(reader)
+    if prefix_result.is_err() {
+        reader.close()
+        return err(prefix_result.error())
+    }
+    auto prefix = prefix_result.value()
+    assert(prefix == b"he", "readable capability must read the requested prefix")
+
+    Writer writer = Writer.new()
+    auto written_result = write_text(writer)
+    if written_result.is_err() {
+        reader.close()
+        writer.close()
+        return err(written_result.error())
+    }
+    auto written = written_result.value()
+    auto position_result = rewind(writer)
+    if position_result.is_err() {
+        reader.close()
+        writer.close()
+        return err(position_result.error())
+    }
+    auto position = position_result.value()
+    auto output_result = writer.bytes()
+    if output_result.is_err() {
+        reader.close()
+        writer.close()
+        return err(output_result.error())
+    }
+    auto output = output_result.value()
+    assert(output == b"ok", "writable capability must preserve written bytes")
+
+    print("readable: " + prefix.to_utf8_lossy())
+    print("writable bytes: " + written.to_string())
+    print("seek position: " + position.to_string())
+    print("output: " + output.to_utf8_lossy())
+
+    reader.close()
+    writer.close()
+    return ok(written + position)
+}
+
+func main() returns void {
+    auto result = run()
+    if result.is_err() {
+        print(result.error().message())
+        return
+    }
+    print("stream interfaces complete")
+    return
+}

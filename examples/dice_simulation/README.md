@@ -2,7 +2,7 @@
 
 Roll dice many times and check the resulting distribution.
 
-Uses `std.random` and `std.assert`.
+Uses `std.random` and Mux's built-in `assert(condition, message)`.
 
 `random.seed` is what makes this testable. The generator is a plain LCG, so a
 fixed seed produces the same sequence on every run and every machine. Seeded, the
