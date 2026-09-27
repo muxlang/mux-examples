@@ -1,10 +1,10 @@
 warning: 2 warnings
 
 warning[W0300]: binding 'i' is never read
---> main.mux:23:9
+--> main.mux:23:5
    |
 23 |     for int i in range(0, count) {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 24 |         // next_range is inclusive of min and exclusive of max, so this is 1..6.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 25 |         auto face = random.next_range(1, SIDES + 1)
@@ -13,10 +13,10 @@ warning[W0300]: binding 'i' is never read
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning[W0300]: binding 'i' is never read
---> main.mux:35:9
+--> main.mux:35:5
    |
 35 |     for int i in range(0, width) {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 36 |         out = out + "#"
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
