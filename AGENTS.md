@@ -26,4 +26,6 @@ committing. Do not leave compiled binaries in the repository.
 ## Documentation
 
 See [`README.md`](README.md), each example's README, and the linked context
-workaround notes.
+workaround notes. The
+[cross-repo testing policy](https://github.com/muxlang/mux-context/blob/main/docs/testing-policy.md)
+explains why teaching examples stay separate from compiler regression fixtures.
